@@ -1,0 +1,181 @@
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+:root {
+  /* Charcoal palette — warm undertones, easy on the eyes */
+  --bg-deep: #050505;
+  --bg-chrome: #090909;
+  --bg-surface: #0d0d0d;
+  --bg-elevated: #121212;
+  --bg-page: #101010;
+  --bg-hover: rgba(255, 248, 235, 0.045);
+  --bg-active: rgba(201, 165, 92, 0.1);
+  --editor-canvas: #070707;
+  --border: #1c1c1c;
+  --border-subtle: #131313;
+  --border-page: rgba(255, 248, 235, 0.055);
+  --text-primary: #d6d2ca;
+  --text-secondary: #a9a59d;
+  --text-muted: #6f6b65;
+  --text-faint: #464340;
+  --accent: #c9a55c;
+  --accent-hover: #dbb978;
+  --accent-dim: rgba(201, 165, 92, 0.48);
+  --accent-subtle: rgba(201, 165, 92, 0.1);
+  --accent-brand: #9a8ec8;
+  --status-draft: #73706a;
+  --status-refine: #c9953a;
+  --status-final: #4a9e72;
+  --research-accent: #a68fd4;
+  --character-accent: #8eb4c8;
+  --danger: #c45c5c;
+  --font-ui: "Segoe UI", system-ui, -apple-system, "Inter", sans-serif;
+  --font-editor: "Georgia", "Iowan Old Style", "Palatino Linotype", serif;
+  --radius: 8px;
+  --radius-sm: 6px;
+  --radius-lg: 10px;
+  --sidebar-width: 260px;
+  --titlebar-height: 32px;
+  --shadow-sm: 0 2px 16px rgba(0, 0, 0, 0.55);
+  --shadow-md: 0 12px 40px rgba(0, 0, 0, 0.65);
+  --shadow-page: 0 0 0 1px rgba(0, 0, 0, 0.35), 0 8px 32px rgba(0, 0, 0, 0.45),
+    0 2px 8px rgba(0, 0, 0, 0.25);
+  --shadow-page-focus: 0 0 0 1px rgba(201, 165, 92, 0.06), 0 16px 48px rgba(0, 0, 0, 0.55),
+    0 4px 16px rgba(0, 0, 0, 0.35);
+  --transition-fast: 0.14s ease;
+  --transition-normal: 0.22s ease;
+  --transition-smooth: 0.32s cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-focus: cubic-bezier(0.22, 1, 0.36, 1);
+  --transition-focus: 0.48s var(--ease-focus);
+}
+
+html,
+body {
+  height: 100%;
+  overflow: hidden;
+  font-family: var(--font-ui);
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text-primary);
+  background: var(--bg-deep);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+::selection {
+  background: rgba(201, 165, 92, 0.28);
+  color: var(--text-primary);
+}
+
+button {
+  font-family: inherit;
+  font-size: inherit;
+  cursor: pointer;
+  border: none;
+  background: none;
+  color: inherit;
+  transition: background var(--transition-fast), color var(--transition-fast),
+    border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+button:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+input:not([type="checkbox"]):not([type="radio"]),
+select {
+  font-family: inherit;
+  font-size: inherit;
+  color: var(--text-primary);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 6px 10px;
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast),
+    background var(--transition-fast);
+}
+
+input[type="checkbox"],
+input[type="radio"] {
+  width: 14px;
+  height: 14px;
+  margin: 0;
+  padding: 0;
+  flex-shrink: 0;
+  accent-color: var(--accent);
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  cursor: pointer;
+  transition: none;
+}
+
+input::placeholder {
+  color: var(--text-faint);
+}
+
+input:not([type="checkbox"]):not([type="radio"]):focus,
+select:focus {
+  outline: none;
+  border-color: var(--accent-dim);
+  box-shadow: 0 0 0 2px var(--accent-subtle);
+}
+
+input[type="checkbox"]:focus,
+input[type="radio"]:focus {
+  outline: none;
+  box-shadow: none;
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 4px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+  transition: background var(--transition-fast);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #2a2826;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
