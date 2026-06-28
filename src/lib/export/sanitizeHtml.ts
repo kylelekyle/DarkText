@@ -31,7 +31,13 @@ export function sanitizeHtmlForDisplay(html: string): string {
         el.removeAttribute(attr.name);
         continue;
       }
-      if ((name === "href" || name === "src" || name === "xlink:href") && value.startsWith("data:")) {
+      if (
+        (name === "href" || name === "src" || name === "xlink:href") &&
+        (value.startsWith("data:") ||
+          value.startsWith("http://") ||
+          value.startsWith("https://") ||
+          value.startsWith("//"))
+      ) {
         el.removeAttribute(attr.name);
       }
     }

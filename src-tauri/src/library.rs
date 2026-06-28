@@ -71,6 +71,19 @@ pub(crate) fn validate_chapter_id(id: &str) -> Result<(), String> {
     Ok(())
 }
 
+pub(crate) fn validate_snapshot_id(id: &str) -> Result<(), String> {
+    if id.is_empty()
+        || id == "."
+        || id == ".."
+        || id.contains('/')
+        || id.contains('\\')
+        || id.contains('\0')
+    {
+        return Err("Invalid snapshot id".into());
+    }
+    Ok(())
+}
+
 pub(crate) fn validate_status(status: &str) -> Result<(), String> {
     const VALID_STATUSES: &[&str] = &["draft", "needs-refine", "final"];
     if VALID_STATUSES.contains(&status) {
@@ -412,6 +425,13 @@ mod tests {
     #[test]
     fn validate_chapter_id_accepts_valid_uuid() {
         assert!(validate_chapter_id("550e8400-e29b-41d4-a716-446655440000").is_ok());
+    }
+
+    #[test]
+    fn validate_snapshot_id_rejects_path_traversal() {
+        assert!(validate_snapshot_id("..").is_err());
+        assert!(validate_snapshot_id("snap/id").is_err());
+        assert!(validate_snapshot_id("2026-01-01T00-00-00Z").is_ok());
     }
 
     fn temp_dir(label: &str) -> PathBuf {

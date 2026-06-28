@@ -30,4 +30,12 @@ describe("sanitizeHtmlForDisplay", () => {
     expect(out).not.toContain("<style");
     expect(out).not.toContain("data:text/html");
   });
+
+  it("strips remote image and link URLs", () => {
+    const html =
+      '<p><img src="https://evil.test/track.png" alt="x"></p><a href="http://evil.test">link</a>';
+    const out = sanitizeHtmlForDisplay(html);
+    expect(out).not.toContain("https://evil.test");
+    expect(out).not.toContain("http://evil.test");
+  });
 });

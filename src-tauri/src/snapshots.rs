@@ -1,7 +1,7 @@
 use crate::compile::stats_from_html;
 use crate::library::{
     atomic_write, html_path, meta_path, read_meta_file, section_dir, validate_chapter_id,
-    write_chapter_files,
+    validate_snapshot_id, write_chapter_files,
 };
 use crate::models::{ChapterContent, ChapterSnapshot};
 use chrono::Utc;
@@ -133,9 +133,7 @@ pub fn restore_chapter_snapshot(
     snapshot_id: &str,
 ) -> Result<ChapterContent, String> {
     validate_chapter_id(chapter_id)?;
-    if snapshot_id.contains('/') || snapshot_id.contains('\\') || snapshot_id.contains('\0') {
-        return Err("Invalid snapshot id".into());
-    }
+    validate_snapshot_id(snapshot_id)?;
     let dir = snapshot_root(library_path, section, chapter_id);
     let html_file = dir.join(format!("{snapshot_id}.html"));
     if !html_file.exists() {

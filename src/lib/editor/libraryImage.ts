@@ -7,8 +7,8 @@ declare module '@tiptap/extension-image' {
 }
 
 function resolveLibraryImageSrc(src: string, libraryPath: string | null | undefined): string {
-  if (!src || src.startsWith('data:') || src.startsWith('http://') || src.startsWith('https://')) {
-    return src;
+  if (!src || src.startsWith('data:') || src.startsWith('http://') || src.startsWith('https://') || src.startsWith('//')) {
+    return '';
   }
   if (src.startsWith('images/') && libraryPath) {
     const normalized = libraryPath.replace(/\\/g, '/').replace(/\/$/, '');
