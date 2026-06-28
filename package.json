@@ -1,6 +1,6 @@
 {
   "name": "darktext",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "A minimalist, portable word processor for long-form authors",
   "type": "module",
   "scripts": {

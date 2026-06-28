@@ -12,6 +12,10 @@ export async function openLibrary(path: string): Promise<LibraryManifest> {
   return invoke("open_library", { path });
 }
 
+export async function isLibraryPath(path: string): Promise<boolean> {
+  return invoke("is_library_path", { path });
+}
+
 export async function closeLibrary(): Promise<void> {
   return invoke("close_library");
 }

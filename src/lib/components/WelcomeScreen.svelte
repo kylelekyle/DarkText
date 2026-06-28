@@ -8,9 +8,9 @@
   import WelcomeFirstRun from "./welcome/WelcomeFirstRun.svelte";
   import WelcomeRecentList from "./welcome/WelcomeRecentList.svelte";
   import {
-    getLastLibrary,
     getPrefs,
-    getRecentLibraries,
+    refreshRecentLibraries,
+    removeRecentLibrary,
     savePrefs,
     type AppPrefs,
   } from "$lib/utils/recentLibraries";
@@ -24,14 +24,16 @@
   let prefs = $state<AppPrefs>(getPrefs());
 
   onMount(() => {
-    recent = getRecentLibraries();
-    lastLibrary = getLastLibrary();
-    prefs = getPrefs();
-    showFirstRun = !prefs.firstRunComplete;
+    void (async () => {
+      prefs = getPrefs();
+      showFirstRun = !prefs.firstRunComplete;
+      recent = await refreshRecentLibraries();
+      lastLibrary = recent[0] ?? null;
 
-    if (prefs.openLastOnLaunch && lastLibrary) {
-      void handleOpenLibrary(lastLibrary, true);
-    }
+      if (prefs.openLastOnLaunch && lastLibrary) {
+        void handleOpenLibrary(lastLibrary, true);
+      }
+    })();
   });
 
   async function completeFirstRun(type: "portable" | "install") {
@@ -108,10 +110,9 @@
     } catch (e) {
       const msg = formatError(e);
       if (silent) {
-        const { removeRecentLibrary } = await import("$lib/utils/recentLibraries");
         removeRecentLibrary(selected);
-        recent = getRecentLibraries();
-        lastLibrary = getLastLibrary();
+        recent = await refreshRecentLibraries();
+        lastLibrary = recent[0] ?? null;
         app.showToast(`Could not open last library: ${msg}`);
       } else {
         localError = msg;

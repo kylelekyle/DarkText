@@ -307,6 +307,12 @@ pub fn create_library(path: String, name: String) -> Result<LibraryManifest, Str
 }
 
 #[tauri::command]
+pub fn is_library_path(path: String) -> bool {
+    let library_path = PathBuf::from(path);
+    library_path.is_dir() && library_manifest_path(&library_path).is_file()
+}
+
+#[tauri::command]
 pub fn open_library(path: String) -> Result<LibraryManifest, String> {
     let library_path = PathBuf::from(&path);
     let manifest = reload_library_manifest(&library_path, path)?;
@@ -431,6 +437,21 @@ mod tests {
 
         let _ = fs::remove_dir_all(&dir_a);
         let _ = fs::remove_dir_all(&dir_b);
+    }
+
+    #[test]
+    fn is_library_path_requires_directory_with_manifest() {
+        let dir = temp_dir("is-library");
+        let path = dir.to_string_lossy().to_string();
+
+        assert!(!is_library_path(path.clone()));
+        create_library(path.clone(), "Check".to_string()).unwrap();
+        assert!(is_library_path(path.clone()));
+
+        fs::remove_file(library_manifest_path(&dir)).unwrap();
+        assert!(!is_library_path(path));
+
+        let _ = fs::remove_dir_all(&dir);
     }
 
     #[test]

@@ -25,8 +25,9 @@ pub use search::*;
 pub use review_summary::*;
 pub use mindmap::{read_mindmap, write_mindmap, MindMapData, MindMapNodePos};
 pub use library::{
-    close_library, create_library, open_library, save_library_manifest, get_book_settings,
-    save_book_settings, list_research_chapters, list_character_chapters, get_compile_chapters,
+    close_library, create_library, is_library_path, open_library, save_library_manifest,
+    get_book_settings, save_book_settings, list_research_chapters, list_character_chapters,
+    get_compile_chapters,
 };
 
 use library::{require_active_library, with_library_lock};
@@ -77,6 +78,7 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .invoke_handler(tauri::generate_handler![
             create_library,
+            is_library_path,
             open_library,
             close_library,
             create_chapter,
