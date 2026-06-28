@@ -1,6 +1,7 @@
 import JSZip from "jszip";
 import * as api from "$lib/api";
 import type { BookSettings, CompileOptions, ExportResult } from "$lib/types";
+import { compileChapterHeading } from "$lib/utils/compileDisplayPrefs";
 import { loadChaptersBulk, stripForPublish } from "./pipeline";
 import { sanitizeFilename } from "./sanitize";
 import { writeExportBytes } from "./writeExport";
@@ -135,9 +136,12 @@ export async function compileBookAsEpub(
   }
 
   const loaded = await loadChaptersBulk(libraryPath, finals, "chapters");
+  const prefs = bookSettings.preferences;
   const sections: EpubSection[] = await Promise.all(
-    loaded.map(async (c) => ({
-      title: c.meta.title,
+    loaded.map(async (c, index) => ({
+      title:
+        compileChapterHeading(index + 1, c.meta.title, prefs) ??
+        `Chapter ${index + 1}`,
       html: await stripForPublish(c.html),
     })),
   );
@@ -146,7 +150,7 @@ export async function compileBookAsEpub(
   const author = bookSettings.author.trim();
   const base =
     options.filename?.trim() ||
-    `${await sanitizeFilename(title || "book")}-${new Date().toISOString().slice(0, 10).replace(/-/g, "")}.epub`;
+    `${await sanitizeFilename(title || "book")}.epub`;
   const filename = await resolveEpubFilename(base);
 
   const blob = await buildEpubBlob(sections, {

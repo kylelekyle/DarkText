@@ -78,6 +78,24 @@ export function gapIndexFromPointerY(
   return rowRects.length;
 }
 
+/** 1-based list position while previewing a drag (updates before drop commits). */
+export function previewOrderAtGap<T extends { id: string }>(
+  list: T[],
+  itemId: string,
+  dragId: string | null,
+  gapIndex: number,
+): number {
+  const base = list.findIndex((c) => c.id === itemId);
+  if (base < 0) return 0;
+  if (!dragId) return base + 1;
+
+  const preview = reorderByGap(list, dragId, Math.round(gapIndex));
+  if (!preview) return base + 1;
+
+  const idx = preview.findIndex((c) => c.id === itemId);
+  return idx >= 0 ? idx + 1 : base + 1;
+}
+
 /** Continuous insert position (0..n) for smooth drag preview. */
 export function gapPositionFromPointerY(
   clientY: number,

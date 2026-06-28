@@ -21,6 +21,43 @@ pub struct LibraryPreferences {
     pub include_research_in_compile: Option<bool>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub include_characters_in_compile: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub compile_show_chapter_numbers: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub compile_show_chapter_titles: Option<bool>,
+}
+
+pub fn compile_show_chapter_numbers(prefs: &LibraryPreferences) -> bool {
+    prefs.compile_show_chapter_numbers.unwrap_or(true)
+}
+
+pub fn compile_show_chapter_titles(prefs: &LibraryPreferences) -> bool {
+    prefs.compile_show_chapter_titles.unwrap_or(true)
+}
+
+pub fn compile_chapter_heading(
+    meta: &ChapterMeta,
+    order: usize,
+    prefs: &LibraryPreferences,
+) -> Option<String> {
+    let show_numbers = compile_show_chapter_numbers(prefs);
+    let show_titles = compile_show_chapter_titles(prefs);
+    let number = if show_numbers {
+        Some(format!("Chapter {order}"))
+    } else {
+        None
+    };
+    let title = if show_titles && !meta.title.is_empty() {
+        Some(meta.title.as_str())
+    } else {
+        None
+    };
+    match (number, title) {
+        (Some(n), Some(t)) => Some(format!("{n} — {t}")),
+        (Some(n), None) => Some(n),
+        (None, Some(t)) => Some(t.to_string()),
+        (None, None) => None,
+    }
 }
 
 #[derive(Debug, serde::Serialize, serde::Deserialize, Clone)]
@@ -234,14 +271,10 @@ pub fn build_book_html(
         body.push_str("</section>");
     }
 
-    for (meta, html) in chapters {
+    let prefs = Some(&settings.preferences);
+    for (i, (meta, html)) in chapters.iter().enumerate() {
         let clean = strip_review_marks(html);
-        body.push_str(&format!(
-            "<section class=\"chapter\" data-id=\"{}\"><h2>{}</h2>{}</section>",
-            escape_html(&meta.id),
-            escape_html(&meta.title),
-            clean
-        ));
+        push_chapter_section(&mut body, meta, i + 1, prefs, &clean);
     }
 
     if !research.is_empty() {
@@ -305,6 +338,46 @@ pub fn resolve_output_dir(library_path: &Path, output_dir: Option<&str>) -> Resu
     }
 }
 
+/// If `safe_name` already exists in `dir`, append ` (2)`, ` (3)`, … before the extension.
+pub fn unique_export_path(dir: &Path, safe_name: &str) -> PathBuf {
+    let initial = dir.join(safe_name);
+    if !initial.exists() {
+        return initial;
+    }
+
+    let path = Path::new(safe_name);
+    let stem = path
+        .file_stem()
+        .and_then(|s| s.to_str())
+        .filter(|s| !s.is_empty())
+        .unwrap_or("export");
+    let ext = path.extension().and_then(|e| e.to_str());
+
+    for n in 2..=9999 {
+        let name = match ext {
+            Some(ext) => format!("{stem} ({n}).{ext}"),
+            None => format!("{stem} ({n})"),
+        };
+        let candidate = dir.join(name);
+        if !candidate.exists() {
+            return candidate;
+        }
+    }
+
+    dir.join(format!("{stem} (10000)"))
+}
+
+pub fn resolve_export_file_path(dir: &Path, filename: &str) -> Result<PathBuf, String> {
+    fs::create_dir_all(dir).map_err(|e| e.to_string())?;
+    let safe_name = Path::new(filename)
+        .file_name()
+        .and_then(|n| n.to_str())
+        .map(sanitize_export_filename)
+        .filter(|s| !s.is_empty())
+        .ok_or_else(|| "Invalid export filename".to_string())?;
+    Ok(unique_export_path(dir, &safe_name))
+}
+
 pub fn write_export_to(
     library_path: &Path,
     filename: &str,
@@ -312,14 +385,7 @@ pub fn write_export_to(
     output_dir: Option<&str>,
 ) -> Result<String, String> {
     let dir = resolve_output_dir(library_path, output_dir)?;
-    fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
-    let safe_name = Path::new(filename)
-        .file_name()
-        .and_then(|n| n.to_str())
-        .map(sanitize_export_filename)
-        .filter(|s| !s.is_empty())
-        .ok_or_else(|| "Invalid export filename".to_string())?;
-    let out = dir.join(safe_name);
+    let out = resolve_export_file_path(&dir, filename)?;
     atomic_write(&out, content)?;
     Ok(out.to_string_lossy().to_string())
 }
@@ -345,16 +411,49 @@ fn load_section_for_export(
     Ok(out)
 }
 
-pub fn build_chapters_html(chapters: &[(ChapterMeta, String)], style: &str) -> String {
-    let mut body = String::new();
-    for (meta, html) in chapters {
-        let clean = strip_review_marks(html);
+pub fn chapter_heading_for_export(
+    meta: &ChapterMeta,
+    order: usize,
+    prefs: Option<&LibraryPreferences>,
+) -> Option<String> {
+    if let Some(p) = prefs {
+        compile_chapter_heading(meta, order, p)
+    } else if !meta.title.is_empty() {
+        Some(meta.title.clone())
+    } else {
+        None
+    }
+}
+
+fn push_chapter_section(
+    body: &mut String,
+    meta: &ChapterMeta,
+    order: usize,
+    prefs: Option<&LibraryPreferences>,
+    clean_html: &str,
+) {
+    let id = escape_html(&meta.id);
+    if let Some(heading) = chapter_heading_for_export(meta, order, prefs) {
         body.push_str(&format!(
-            "<section class=\"chapter\" data-id=\"{}\"><h2>{}</h2>{}</section>",
-            escape_html(&meta.id),
-            escape_html(&meta.title),
-            clean
+            "<section class=\"chapter\" data-id=\"{id}\"><h2>{}</h2>{clean_html}</section>",
+            escape_html(&heading)
         ));
+    } else {
+        body.push_str(&format!(
+            "<section class=\"chapter\" data-id=\"{id}\">{clean_html}</section>"
+        ));
+    }
+}
+
+pub fn build_chapters_html(
+    chapters: &[(ChapterMeta, String)],
+    style: &str,
+    prefs: Option<&LibraryPreferences>,
+) -> String {
+    let mut body = String::new();
+    for (i, (meta, html)) in chapters.iter().enumerate() {
+        let clean = strip_review_marks(html);
+        push_chapter_section(&mut body, meta, i + 1, prefs, &clean);
     }
     let css = document_styles(style);
     format!(
@@ -449,6 +548,37 @@ mod tests {
     }
 
     #[test]
+    fn compile_chapter_heading_respects_prefs() {
+        let meta = ChapterMeta {
+            id: "a".to_string(),
+            title: "Winter Ridge".to_string(),
+            status: "final".to_string(),
+            order: 2,
+            updated_at: "now".to_string(),
+            word_count: 0,
+            char_count: 0,
+        };
+        let mut numbers_only = LibraryPreferences::default();
+        numbers_only.compile_show_chapter_titles = Some(false);
+        assert_eq!(
+            compile_chapter_heading(&meta, 3, &numbers_only),
+            Some("Chapter 3".to_string())
+        );
+
+        let mut titles_only = LibraryPreferences::default();
+        titles_only.compile_show_chapter_numbers = Some(false);
+        assert_eq!(
+            compile_chapter_heading(&meta, 3, &titles_only),
+            Some("Winter Ridge".to_string())
+        );
+
+        let mut neither = LibraryPreferences::default();
+        neither.compile_show_chapter_numbers = Some(false);
+        neither.compile_show_chapter_titles = Some(false);
+        assert_eq!(compile_chapter_heading(&meta, 3, &neither), None);
+    }
+
+    #[test]
     fn build_book_html_includes_chapters() {
         let settings = BookSettings {
             title: "Test".to_string(),
@@ -474,7 +604,7 @@ mod tests {
             &[],
             "default",
         );
-        assert!(html.contains("Chapter One"));
+        assert!(html.contains("Chapter 1 — Chapter One"));
         assert!(html.contains("Body"));
     }
 
@@ -522,6 +652,19 @@ mod tests {
     }
 
     #[test]
+    fn unique_export_path_appends_increment() {
+        let dir = std::env::temp_dir().join(format!("darktext-uniq-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&dir);
+        fs::create_dir_all(&dir).unwrap();
+        fs::write(dir.join("book.docx"), b"one").unwrap();
+        fs::write(dir.join("book (2).docx"), b"two").unwrap();
+
+        let next = unique_export_path(&dir, "book.docx");
+        assert_eq!(next.file_name().and_then(|s| s.to_str()), Some("book (3).docx"));
+
+        let _ = fs::remove_dir_all(&dir);
+    }
+
     fn write_export_creates_file() {
         let dir = std::env::temp_dir().join("darktext-export-test");
         let _ = fs::remove_dir_all(&dir);

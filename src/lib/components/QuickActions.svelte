@@ -16,8 +16,21 @@
   const actions = $derived(
     buildMenuActions(defaultMenuActionContext(editor, { trackAll: true })),
   );
+  const PALETTE_SKIP = new Set([
+    "file.export.html",
+    "file.export.md",
+    "file.export.docx",
+    "file.export.text",
+    "book.compile.html",
+    "book.compile.md",
+    "book.compile.txt",
+    "book.compile.docx",
+    "book.compile.epub",
+  ]);
+
   const filtered = $derived(
     actions.filter((a) => {
+      if (PALETTE_SKIP.has(a.id)) return false;
       const q = query.trim().toLowerCase();
       if (!q) return true;
       return (

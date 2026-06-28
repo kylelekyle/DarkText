@@ -128,7 +128,10 @@ export class LibraryStore {
     if (!this.library) return;
     const settings: BookSettings = {
       ...this.bookSettings,
-      preferences: preferencesFromSettings(appSettings),
+      preferences: {
+        ...this.bookSettings.preferences,
+        ...preferencesFromSettings(appSettings),
+      },
     };
     this.bookSettings = await api.saveBookSettings(this.library.path, settings);
   }

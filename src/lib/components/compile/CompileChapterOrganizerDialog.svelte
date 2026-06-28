@@ -7,11 +7,19 @@
 
   interface Props {
     chapters: ChapterMeta[];
+    showNumbers?: boolean;
+    showTitles?: boolean;
     onSave: (chapterIds: string[]) => void;
     onClose: () => void;
   }
 
-  let { chapters, onSave, onClose }: Props = $props();
+  let {
+    chapters,
+    showNumbers = true,
+    showTitles = true,
+    onSave,
+    onClose,
+  }: Props = $props();
 
   let draftChapters = $state<ChapterMeta[]>([...chapters]);
   const baselineIds = chapters.map((c) => c.id);
@@ -55,6 +63,8 @@
 
     <CompileChapterList
       items={draftChapters}
+      {showNumbers}
+      {showTitles}
       showHeader={false}
       onReorder={applyDraftReorder}
     />

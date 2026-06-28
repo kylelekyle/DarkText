@@ -120,7 +120,57 @@ export function buildMenuActions(ctx: ActionContext): MenuAction[] {
       disabled: !hasChapter,
       run: () => app.openDialog("chapterSnapshots"),
     },
-    { id: "file.export", label: "Export as…", shortcut: menuShortcut("file.export"), group: "File", disabled: !hasChapter, run: () => app.openDialog("exportChapter") },
+    {
+      id: "file.export",
+      label: "Export as…",
+      shortcut: menuShortcut("file.export"),
+      group: "File",
+      disabled: !hasChapter,
+      run: () => {
+        app.exportFormat = "html";
+        app.openDialog("exportChapter");
+      },
+    },
+    {
+      id: "file.export.html",
+      label: "HTML",
+      group: "File",
+      disabled: !hasChapter,
+      run: () => {
+        app.exportFormat = "html";
+        app.openDialog("exportChapter");
+      },
+    },
+    {
+      id: "file.export.md",
+      label: "Markdown",
+      group: "File",
+      disabled: !hasChapter,
+      run: () => {
+        app.exportFormat = "markdown";
+        app.openDialog("exportChapter");
+      },
+    },
+    {
+      id: "file.export.docx",
+      label: "Word (.docx)",
+      group: "File",
+      disabled: !hasChapter,
+      run: () => {
+        app.exportFormat = "docx";
+        app.openDialog("exportChapter");
+      },
+    },
+    {
+      id: "file.export.text",
+      label: "Plain Text",
+      group: "File",
+      disabled: !hasChapter,
+      run: () => {
+        app.exportFormat = "text";
+        app.openDialog("exportChapter");
+      },
+    },
     { id: "file.close", label: "Close Library", group: "File", run: () => void app.requestCloseLibrary() },
 
     // Edit
@@ -253,7 +303,18 @@ export const MENU_STRUCTURE: { label: string; group: string; items?: string[] }[
   {
     label: "File",
     group: "File",
-    items: ["file.new", "file.open", "file.create", "file.save", "file.snapshots", "file.export", "file.close"],
+    items: [
+      "file.new",
+      "file.open",
+      "file.create",
+      "file.save",
+      "file.snapshots",
+      "file.export.html",
+      "file.export.md",
+      "file.export.docx",
+      "file.export.text",
+      "file.close",
+    ],
   },
   {
     label: "Edit",

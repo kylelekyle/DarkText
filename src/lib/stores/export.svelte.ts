@@ -20,6 +20,7 @@ import type {
 
 export class ExportStore {
   compileFormat = $state<ExportFormat | null>(null);
+  exportFormat = $state<ExportFormat | null>(null);
 
   async compileBook(options: CompileOptions): Promise<ExportResult> {
     if (!libraryStore.library) throw new Error("No library open");

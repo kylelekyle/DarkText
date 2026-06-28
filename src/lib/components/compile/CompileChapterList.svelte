@@ -4,17 +4,28 @@
   import {
     draggedOffsetPx,
     gapPositionFromPointerY,
+    previewOrderAtGap,
     reorderByGap,
     shiftOffsetPx,
   } from "$lib/utils/listReorder";
 
   interface Props {
     items: ChapterMeta[];
-    onReorder: (chapterIds: string[]) => void;
+    onReorder?: (chapterIds: string[]) => void;
     showHeader?: boolean;
+    showNumbers?: boolean;
+    showTitles?: boolean;
+    readOnly?: boolean;
   }
 
-  let { items, onReorder, showHeader = true }: Props = $props();
+  let {
+    items,
+    onReorder,
+    showHeader = true,
+    showNumbers = true,
+    showTitles = true,
+    readOnly = false,
+  }: Props = $props();
 
   let listEl = $state<HTMLUListElement | null>(null);
   let draggingId = $state<string | null>(null);
@@ -99,7 +110,7 @@
     if (commit && draggingId) {
       const reordered = reorderByGap(items, draggingId, insertGap);
       if (reordered) {
-        onReorder(reordered.map((c) => c.id));
+        onReorder?.(reordered.map((c) => c.id));
       }
     }
 
@@ -137,7 +148,7 @@
   }
 
   function onRowPointerDown(e: PointerEvent, id: string) {
-    if (e.button !== 0) return;
+    if (readOnly || e.button !== 0) return;
 
     const row = e.currentTarget as HTMLElement;
     const startX = e.clientX;
@@ -189,14 +200,23 @@
     {#each items as item, index (item.id)}
       <li
         class="chapter-row"
+        class:read-only={readOnly}
         class:dragging={draggingId === item.id}
         data-chapter-id={item.id}
         style:transform={itemTransform(index, item.id, smoothGap)}
         onpointerdown={(e) => onRowPointerDown(e, item.id)}
       >
-        <span class="drag-handle" aria-hidden="true">⠿</span>
-        <span class="order">{index + 1}</span>
-        <span class="title">{item.title}</span>
+        {#if !readOnly}
+          <span class="drag-handle" aria-hidden="true">⠿</span>
+        {/if}
+        {#if showNumbers}
+          <span class="order">{previewOrderAtGap(items, item.id, draggingId, smoothGap)}</span>
+        {/if}
+        {#if showTitles}
+          <span class="title">{item.title}</span>
+        {:else if !showNumbers}
+          <span class="title muted" aria-hidden="true">—</span>
+        {/if}
       </li>
     {:else}
       <li class="empty">No Final chapters. Mark chapters as Final in the sidebar.</li>
@@ -247,7 +267,12 @@
     z-index: 0;
   }
 
-  .chapter-row:active {
+  .chapter-row.read-only {
+    cursor: default;
+    touch-action: auto;
+  }
+
+  .chapter-row:active:not(.read-only) {
     cursor: grabbing;
   }
 
@@ -286,6 +311,12 @@
     text-overflow: ellipsis;
     white-space: nowrap;
     min-width: 0;
+  }
+
+  .title.muted {
+    color: var(--text-muted);
+    font-style: italic;
+    flex: 0;
   }
 
   .empty {

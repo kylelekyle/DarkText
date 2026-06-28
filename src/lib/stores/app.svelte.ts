@@ -225,6 +225,12 @@ class AppStore {
   set compileFormat(v: ExportFormat | null) {
     exportStore.compileFormat = v;
   }
+  get exportFormat() {
+    return exportStore.exportFormat;
+  }
+  set exportFormat(v: ExportFormat | null) {
+    exportStore.exportFormat = v;
+  }
 
   requestChapterSearchFocus() {
     this.sidebarCollapsed = false;

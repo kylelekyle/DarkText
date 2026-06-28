@@ -124,6 +124,9 @@ export interface LibraryPreferences {
   defaultCompileFormat?: ExportFormat;
   includeResearchInCompile?: boolean;
   includeCharactersInCompile?: boolean;
+  /** Compile dialog chapter list — default true when omitted */
+  compileShowChapterNumbers?: boolean;
+  compileShowChapterTitles?: boolean;
 }
 
 export interface BookSettings {

@@ -83,7 +83,10 @@ export const SHORTCUTS: ShortcutDef[] = [
     keys: "Ctrl+Shift+E",
     label: "Export as…",
     when: () => !!app.activeChapterId,
-    run: () => app.openDialog("exportChapter"),
+    run: () => {
+      app.exportFormat = "html";
+      app.openDialog("exportChapter");
+    },
   },
   {
     id: "compile",

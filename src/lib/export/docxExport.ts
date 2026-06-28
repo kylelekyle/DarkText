@@ -1,5 +1,6 @@
 import * as api from "$lib/api";
 import type { BookSettings, ChapterMeta, CompileOptions, CompilePreset, ExportResult } from "$lib/types";
+import { compileChapterHeading } from "$lib/utils/compileDisplayPrefs";
 import { buildDocxBlob } from "./htmlToDocx";
 import { loadChaptersBulk, stripForPublish } from "./pipeline";
 import { sanitizeFilename } from "./sanitize";
@@ -43,7 +44,6 @@ export async function exportChaptersAsDocx(
   },
 ): Promise<ExportResult> {
   const style = resolveStyle(options.style);
-  const stamp = new Date().toISOString().slice(0, 10);
   const cleanSections = await Promise.all(
     chapters.map(async (c) => ({
       title: c.meta.title,
@@ -57,7 +57,7 @@ export async function exportChaptersAsDocx(
       options.filename?.trim() ||
       (chapters.length === 1
         ? `${await sanitizeFilename(meta?.title ?? "chapter")}.docx`
-        : `export-${stamp}.docx`);
+        : "export.docx");
     const filename = await resolveDocxFilename(base);
     const blob = await buildDocxBlob(cleanSections, {}, style, libraryPath);
     const preview = chapters.map((c) => c.meta.title).join(", ");
@@ -66,7 +66,7 @@ export async function exportChaptersAsDocx(
 
   let lastPath = "";
   for (const ch of cleanSections) {
-    const base = `${await sanitizeFilename(ch.title ?? "chapter")}-${stamp}`;
+    const base = `${await sanitizeFilename(ch.title ?? "chapter")}`;
     const blob = await buildDocxBlob([ch], {}, style, libraryPath);
     const res = await blobToResult(
       libraryPath,
@@ -91,9 +91,10 @@ export async function compileBookAsDocx(
   }
 
   const loaded = await loadChaptersBulk(libraryPath, finals, "chapters");
+  const prefs = bookSettings.preferences;
   const sections: { title?: string; html: string }[] = await Promise.all(
-    loaded.map(async (c) => ({
-      title: c.meta.title,
+    loaded.map(async (c, index) => ({
+      title: compileChapterHeading(index + 1, c.meta.title, prefs),
       html: await stripForPublish(c.html),
     })),
   );
@@ -131,7 +132,7 @@ export async function compileBookAsDocx(
   const author = bookSettings.author.trim();
   const base =
     options.filename?.trim() ||
-    `${await sanitizeFilename(title || "book")}-${new Date().toISOString().slice(0, 10).replace(/-/g, "")}.docx`;
+    `${await sanitizeFilename(title || "book")}.docx`;
   const filename = await resolveDocxFilename(base);
 
   const blob = await buildDocxBlob(

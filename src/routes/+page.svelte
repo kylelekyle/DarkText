@@ -4,6 +4,7 @@
   import { fontStore } from "$lib/stores/fonts.svelte";
   import { getAppSettings } from "$lib/utils/appSettings";
   import { initWindowCloseHandler } from "$lib/utils/windowClose";
+  import { restoreWorkspaceSession } from "$lib/utils/workspaceSession";
   import TitleBar from "$lib/components/TitleBar.svelte";
   import WelcomeScreen from "$lib/components/WelcomeScreen.svelte";
   import AppShell from "$lib/components/AppShell.svelte";
@@ -12,6 +13,7 @@
   onMount(() => {
     app.applySettings(getAppSettings());
     void fontStore.init();
+    void restoreWorkspaceSession();
     return () => fontStore.destroy();
   });
 </script>

@@ -3,6 +3,7 @@ import {
   draggedOffsetPx,
   gapIndexFromPointerY,
   gapPositionFromPointerY,
+  previewOrderAtGap,
   reorderByGap,
   reorderFinalChaptersInLibrary,
   reorderTargetIndex,
@@ -43,6 +44,14 @@ describe("listReorder", () => {
 
   it("returns null when position unchanged", () => {
     expect(reorderByGap(list, "b", 1)).toBeNull();
+  });
+
+  it("shows preview order during drag, not original index", () => {
+    expect(previewOrderAtGap(list, "a", null, 0)).toBe(1);
+    expect(previewOrderAtGap(list, "d", "a", 2)).toBe(4);
+    expect(previewOrderAtGap(list, "a", "a", 2)).toBe(2);
+    expect(previewOrderAtGap(list, "b", "d", 1)).toBe(3);
+    expect(previewOrderAtGap(list, "b", "b", 1)).toBe(2);
   });
 
   it("shifts rows between source and gap", () => {

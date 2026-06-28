@@ -15,6 +15,7 @@
   let menuBarEl = $state<HTMLElement | null>(null);
   let openMenu = $state<string | null>(null);
   let openSubmenu = $state<string | null>(null);
+  let openQuickExport = $state(false);
   let suppressOutsideClose = false;
 
   const hasLibrary = $derived(!!app.library);
@@ -46,6 +47,7 @@
   function toggle(menu: string) {
     openMenu = openMenu === menu ? null : menu;
     openSubmenu = null;
+    openQuickExport = false;
     suppressOutsideClose = true;
     queueMicrotask(() => {
       suppressOutsideClose = false;
@@ -53,9 +55,10 @@
   }
 
   function closeMenus() {
-    if (openMenu === null && openSubmenu === null) return;
+    if (openMenu === null && openSubmenu === null && !openQuickExport) return;
     openMenu = null;
     openSubmenu = null;
+    openQuickExport = false;
   }
 
   function handleOutsidePointer(e: MouseEvent) {
@@ -78,6 +81,18 @@
     const id = items?.[index];
     return !!id && id.startsWith("book.compile.") && id !== "book.compile.html";
   }
+
+  function isFileExportSection(items: string[] | undefined, index: number): boolean {
+    const id = items?.[index];
+    return !!id && id.startsWith("file.export.") && id !== "file.export.html";
+  }
+
+  const EXPORT_SUBMENU_IDS = [
+    "file.export.html",
+    "file.export.md",
+    "file.export.docx",
+    "file.export.text",
+  ] as const;
 
   function shouldSep(items: string[], index: number): boolean {
     const sepBefore = ["file.save", "edit.selectAll", "fmt.justify", "review.track", "review.summary", "book.settings", "view.spell"];
@@ -114,7 +129,46 @@
           >
             {#each menu.items ?? [] as itemId, i}
               {@const action = getItem(itemId)}
-              {#if itemId === "book.compile.html"}
+              {#if itemId === "file.export.html"}
+                <div
+                  class="submenu-wrap"
+                  role="group"
+                  onmouseenter={() => (openSubmenu = "export")}
+                  onmouseleave={() => (openSubmenu = null)}
+                >
+                  <button
+                    type="button"
+                    class="has-sub"
+                    aria-haspopup="menu"
+                    disabled={getItem("file.export.html")?.disabled}
+                  >
+                    <span>Export as…</span>
+                    <span class="has-sub-meta">
+                      {#if getItem("file.export")?.shortcut}
+                        <span class="shortcut">{getItem("file.export")?.shortcut}</span>
+                      {/if}
+                      <span class="arrow">›</span>
+                    </span>
+                  </button>
+                  {#if openSubmenu === "export"}
+                    <div class="submenu" role="menu" tabindex="-1">
+                      {#each EXPORT_SUBMENU_IDS as cid}
+                        {@const ea = getItem(cid)}
+                        <button
+                          type="button"
+                          role="menuitem"
+                          disabled={ea?.disabled}
+                          onclick={() => runAction(ea)}
+                        >
+                          {ea?.label}
+                        </button>
+                      {/each}
+                    </div>
+                  {/if}
+                </div>
+              {:else if isFileExportSection(menu.items, i)}
+                <!-- skip individual export items, shown in submenu -->
+              {:else if itemId === "book.compile.html"}
                 <div
                   class="submenu-wrap"
                   role="group"
@@ -167,14 +221,43 @@
   </nav>
 
   <div class="quick-actions">
-    <button
-      type="button"
-      class="quick-btn"
-      disabled={getItem("file.export")?.disabled}
-      onclick={() => runAction(getItem("file.export"))}
-    >
-      Export as…
-    </button>
+    <div class="menu-wrap quick-export">
+      <button
+        type="button"
+        class="quick-btn"
+        disabled={getItem("file.export.html")?.disabled}
+        onmousedown={(e) => e.stopPropagation()}
+        onclick={(e) => {
+          e.stopPropagation();
+          openQuickExport = !openQuickExport;
+          openMenu = null;
+          openSubmenu = null;
+        }}
+      >
+        Export as…
+      </button>
+      {#if openQuickExport}
+        <div
+          class="dropdown quick-export-menu"
+          role="menu"
+          tabindex="-1"
+          onmousedown={(e) => e.stopPropagation()}
+          onclick={(e) => e.stopPropagation()}
+        >
+          {#each EXPORT_SUBMENU_IDS as cid}
+            {@const ea = getItem(cid)}
+            <button
+              type="button"
+              role="menuitem"
+              disabled={ea?.disabled}
+              onclick={() => runAction(ea)}
+            >
+              {ea?.label}
+            </button>
+          {/each}
+        </div>
+      {/if}
+    </div>
     <button
       type="button"
       class="quick-btn accent"
@@ -271,9 +354,25 @@
     position: relative;
   }
 
-  .has-sub .arrow {
+  .has-sub {
+    gap: 8px;
+  }
+
+  .has-sub-meta {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
     margin-left: auto;
+  }
+
+  .has-sub .arrow {
     color: var(--text-muted);
+  }
+
+  .quick-export-menu {
+    right: 0;
+    left: auto;
+    min-width: 140px;
   }
 
   .submenu {

@@ -9,6 +9,10 @@ import type {
   SidebarTab,
 } from "$lib/types";
 import type { AppSettings } from "$lib/utils/appSettings";
+import {
+  clearWorkspaceSession,
+  persistWorkspaceSession,
+} from "$lib/utils/workspaceSession";
 import { htmlToPlain } from "$lib/utils/stats";
 import { countWords } from "$lib/utils/wordCount";
 import { chapterStore } from "./chapter.svelte";
@@ -55,6 +59,8 @@ export async function createLibraryWorkspace(
   const first = await libraryStore.newChapter(undefined, "chapters");
   if (first) {
     await openChapterFromContentWorkspace(host, first);
+  } else {
+    persistWorkspaceSession();
   }
 }
 
@@ -78,6 +84,7 @@ export async function openLibraryWorkspace(
   }
   void host.refreshBookStats();
   deferLibraryReviewTotals(host);
+  persistWorkspaceSession();
 }
 
 export function deferLibraryReviewTotals(host: WorkspaceHost): void {
@@ -131,6 +138,7 @@ export async function openChapterWorkspace(
   if (!result) return;
   await reviewStore.tryLoadCommentsOnOpen(result.gen);
   scheduleSearchJumpApply(host);
+  persistWorkspaceSession();
 }
 
 /** Open a chapter we already have in memory (e.g. right after create). */
@@ -147,6 +155,7 @@ export async function openChapterFromContentWorkspace(
   if (!result) return;
   await reviewStore.tryLoadCommentsOnOpen(result.gen);
   scheduleSearchJumpApply(host);
+  persistWorkspaceSession();
 }
 
 const SEARCH_JUMP_MAX_ATTEMPTS = 12;
@@ -212,6 +221,7 @@ export async function reloadActiveChapterWorkspace(
 }
 
 export function goToWelcomeWorkspace(host: WorkspaceHost): void {
+  clearWorkspaceSession();
   if (libraryStore.library) void api.closeLibrary().catch(() => {});
   if (host.reviewTotalsTimer) clearTimeout(host.reviewTotalsTimer);
   host.reviewTotalsTimer = null;

@@ -17,6 +17,6 @@ export async function writeExportBytes(
   } catch (e) {
     console.error("Export failed:", e);
     const message = e instanceof Error ? e.message : String(e);
-    throw new Error(`Export failed: ${message}`);
+    throw new Error(message);
   }
 }

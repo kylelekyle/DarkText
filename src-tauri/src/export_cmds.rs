@@ -1,9 +1,9 @@
 use crate::comments::read_chapter_comments;
 use crate::compile::{
-    build_book_html, build_chapters_html, escape_html, html_to_markdown, html_to_text,
-    load_final_chapters, marked_review_styles, read_book_settings, read_chapter_html,
+    build_book_html, build_chapters_html, escape_html, html_to_markdown,
+    html_to_text, load_final_chapters, marked_review_styles, read_book_settings, read_chapter_html,
     export_filename_stem, read_section_html, sanitize_export_filename, sanitize_filename,
-    strip_review_marks, write_export_to, BookSettings,
+    strip_review_marks, write_export_to, BookSettings, LibraryPreferences,
 };
 use crate::library::{load_section_chapters, CHAPTERS, CHARACTERS, RESEARCH};
 use crate::library::{atomic_write, read_manifest, require_active_library, validate_chapter_id};
@@ -63,27 +63,38 @@ fn ensure_rust_export_format(format: &str) -> Result<&str, String> {
 /// Renders a list of (meta, html) chapters into a single markdown document,
 /// one `{heading_level} title` section per chapter. Shared by `export_chapters`
 /// (combined export) and `compile_book` (chapters + research notes).
-fn chapters_to_markdown(chapters: &[(ChapterMeta, String)], heading_level: &str) -> String {
+fn chapters_to_markdown(
+    chapters: &[(ChapterMeta, String)],
+    heading_level: &str,
+    prefs: Option<&LibraryPreferences>,
+) -> String {
     let mut out = String::new();
-    for (meta, html) in chapters {
-        out.push_str(&format!(
-            "{heading_level} {}\n\n{}\n\n",
-            meta.title,
-            html_to_markdown(&strip_review_marks(html))
-        ));
+    for (i, (meta, html)) in chapters.iter().enumerate() {
+        let body = html_to_markdown(&strip_review_marks(html));
+        let heading = crate::compile::chapter_heading_for_export(meta, i + 1, prefs);
+        if let Some(h) = heading {
+            out.push_str(&format!("{heading_level} {h}\n\n{body}\n\n"));
+        } else {
+            out.push_str(&format!("{body}\n\n"));
+        }
     }
     out
 }
 
 /// Plain-text counterpart to `chapters_to_markdown`.
-fn chapters_to_text(chapters: &[(ChapterMeta, String)]) -> String {
+fn chapters_to_text(
+    chapters: &[(ChapterMeta, String)],
+    prefs: Option<&LibraryPreferences>,
+) -> String {
     let mut out = String::new();
-    for (meta, html) in chapters {
-        out.push_str(&format!(
-            "{}\n\n{}\n\n",
-            meta.title,
-            html_to_text(&strip_review_marks(html))
-        ));
+    for (i, (meta, html)) in chapters.iter().enumerate() {
+        let body = html_to_text(&strip_review_marks(html));
+        let heading = crate::compile::chapter_heading_for_export(meta, i + 1, prefs);
+        if let Some(h) = heading {
+            out.push_str(&format!("{h}\n\n{body}\n\n"));
+        } else {
+            out.push_str(&format!("{body}\n\n"));
+        }
     }
     out
 }
@@ -94,8 +105,7 @@ fn default_compile_filename(settings: &BookSettings, format: &str) -> String {
     } else {
         sanitize_filename(&settings.title)
     };
-    let stamp = Utc::now().format("%Y%m%d");
-    format!("{base}-{stamp}.{format}")
+    format!("{base}.{format}")
 }
 
 fn export_chapter_content(
@@ -207,6 +217,12 @@ pub fn export_chapters(
         .join(", ");
     let out_dir = output_dir.as_deref();
     let doc_style = style_for_format(&format, style.as_deref());
+    let chapter_prefs = if section == CHAPTERS {
+        Some(read_book_settings(&path)?.preferences)
+    } else {
+        None
+    };
+    let prefs_ref = chapter_prefs.as_ref();
 
     if combined || chapter_ids.len() == 1 {
         if chapter_ids.len() == 1 {
@@ -227,7 +243,7 @@ pub fn export_chapters(
             );
         }
 
-        let book_html = build_chapters_html(&chapters, doc_style);
+        let book_html = build_chapters_html(&chapters, doc_style, prefs_ref);
         let base = filename
             .as_deref()
             .map(export_filename_stem)
@@ -245,7 +261,7 @@ pub fn export_chapters(
                 })
             }
             "markdown" => {
-                let md = chapters_to_markdown(&chapters, "##");
+                let md = chapters_to_markdown(&chapters, "##", prefs_ref);
                 let filename = format!("{base}.md");
                 let out = write_export_to(&path, &filename, md.as_bytes(), out_dir)?;
                 Ok(ExportResult {
@@ -255,7 +271,7 @@ pub fn export_chapters(
                 })
             }
             "text" => {
-                let text = chapters_to_text(&chapters);
+                let text = chapters_to_text(&chapters, prefs_ref);
                 let filename = format!("{base}.txt");
                 let out = write_export_to(&path, &filename, text.as_bytes(), out_dir)?;
                 Ok(ExportResult {
@@ -339,15 +355,8 @@ pub fn compile_book(library_path: String, options: CompileOptions) -> Result<Exp
         .filename
         .filter(|s| !s.is_empty())
         .unwrap_or_else(|| default_compile_filename(&settings, format));
-    let safe_name = std::path::Path::new(&out_filename)
-        .file_name()
-        .and_then(|s| s.to_str())
-        .map(sanitize_export_filename)
-        .filter(|s| !s.is_empty())
-        .ok_or_else(|| "Invalid export filename".to_string())?;
     let out_dir_resolved = crate::compile::resolve_output_dir(&path, out_dir)?;
-    fs::create_dir_all(&out_dir_resolved).map_err(|e| e.to_string())?;
-    let out_path = out_dir_resolved.join(safe_name);
+    let out_path = crate::compile::resolve_export_file_path(&out_dir_resolved, &out_filename)?;
 
     match format {
         "html" => {
@@ -366,14 +375,18 @@ pub fn compile_book(library_path: String, options: CompileOptions) -> Result<Exp
             if !settings.author.is_empty() {
                 md.push_str(&format!("*{}*\n\n", settings.author));
             }
-            md.push_str(&chapters_to_markdown(&chapters, "##"));
+            md.push_str(&chapters_to_markdown(
+                &chapters,
+                "##",
+                Some(&settings.preferences),
+            ));
             if !research.is_empty() {
                 md.push_str("## Research Notes\n\n");
-                md.push_str(&chapters_to_markdown(&research, "###"));
+                md.push_str(&chapters_to_markdown(&research, "###", None));
             }
             if !characters.is_empty() {
                 md.push_str("## Cast of Characters\n\n");
-                md.push_str(&chapters_to_markdown(&characters, "###"));
+                md.push_str(&chapters_to_markdown(&characters, "###", None));
             }
             atomic_write(&out_path, md.as_bytes())?;
             Ok(ExportResult {
@@ -387,14 +400,17 @@ pub fn compile_book(library_path: String, options: CompileOptions) -> Result<Exp
             if !settings.title.is_empty() {
                 text.push_str(&format!("{}\n\n", settings.title));
             }
-            text.push_str(&chapters_to_text(&chapters));
+            text.push_str(&chapters_to_text(
+                &chapters,
+                Some(&settings.preferences),
+            ));
             if !research.is_empty() {
                 text.push_str("\n\nResearch Notes\n\n");
-                text.push_str(&chapters_to_text(&research));
+                text.push_str(&chapters_to_text(&research, None));
             }
             if !characters.is_empty() {
                 text.push_str("\n\nCast of Characters\n\n");
-                text.push_str(&chapters_to_text(&characters));
+                text.push_str(&chapters_to_text(&characters, None));
             }
             atomic_write(&out_path, text.as_bytes())?;
             Ok(ExportResult {

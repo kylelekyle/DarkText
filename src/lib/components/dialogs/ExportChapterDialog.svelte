@@ -1,23 +1,23 @@
 <script lang="ts">
+  import { onMount, tick } from "svelte";
   import Modal from "../Modal.svelte";
   import ExportOptionsFields from "../export/ExportOptionsFields.svelte";
   import { app } from "$lib/stores/app.svelte";
   import { formatError } from "$lib/utils/errors";
-  import { outputHint, presetStyleFor, type ExportPresetId } from "$lib/export/exportPresets";
+  import { EXPORT_FORMATS, outputHint } from "$lib/export/exportPresets";
   import type { ExportFormat } from "$lib/types";
 
   type ExportScope = "current" | "selected" | "all";
 
-  let preset = $state<ExportPresetId>("custom");
   let format = $state<ExportFormat>("html");
   let scope = $state<ExportScope>("current");
   let combined = $state(true);
   let outputDir = $state("");
   let filename = $state("");
   let exporting = $state(false);
-  let result = $state<string | null>(null);
   let error = $state<string | null>(null);
   let selectedIds = $state<Set<string>>(new Set());
+  let alive = $state(true);
 
   const chapters = $derived(app.library?.chapters ?? []);
   const filteredChapters = $derived(app.filteredChapters);
@@ -45,6 +45,24 @@
   });
 
   const hint = $derived(outputHint(app.library?.path, outputDir));
+
+  const formatLabel = $derived(
+    EXPORT_FORMATS.find((f) => f.value === format)?.label ?? format,
+  );
+
+  const dialogTitle = $derived(`Export as ${formatLabel}`);
+
+  onMount(() => {
+    alive = true;
+    const requested = app.exportFormat;
+    if (requested) {
+      format = requested;
+      app.exportFormat = null;
+    }
+    return () => {
+      alive = false;
+    };
+  });
 
   function toggleChapter(id: string) {
     const next = new Set(selectedIds);
@@ -76,48 +94,43 @@
     }
     exporting = true;
     error = null;
-    result = null;
     try {
       const name = filename.trim() || defaultFilename;
       const dir = outputDir.trim() || undefined;
-      const style = presetStyleFor(preset);
-      const res = await app.exportChapters(
+      await app.exportChapters(
         ids,
         format,
         combined,
         dir,
         name,
-        style,
+        "default",
         exportSection(),
       );
-      result = res.path;
-      if (res.preview && ids.length > 1 && !combined) {
-        result += ` (${res.preview})`;
-      }
+      if (!alive || !app.library) return;
+      exporting = false;
       app.showToast("Export complete");
+      await tick();
+      if (!alive) return;
+      app.closeDialog();
     } catch (e) {
+      if (!alive) return;
       error = formatError(e);
-    } finally {
       exporting = false;
     }
   }
 </script>
 
-<Modal title="Export as…" wide onClose={() => app.closeDialog()}>
+<Modal title={dialogTitle} wide onClose={() => app.closeDialog()}>
   <div class="form">
     <p class="hint">
-      Export to <code>{hint}</code>
+      Saving as <strong>{formatLabel}</strong> to <code>{hint}</code>
     </p>
 
     <ExportOptionsFields
-      {preset}
-      {format}
       {outputDir}
       {filename}
       {defaultFilename}
       libraryPath={app.library?.path}
-      onPresetChange={(p) => (preset = p)}
-      onFormatChange={(f) => (format = f)}
       onOutputDirChange={(d) => (outputDir = d)}
       onFilenameChange={(n) => (filename = n)}
     />
@@ -172,7 +185,6 @@
     {/if}
 
     {#if error}<p class="error">{error}</p>{/if}
-    {#if result}<p class="success">{result}</p>{/if}
 
     <div class="actions">
       <button class="btn" onclick={() => app.closeDialog()}>Close</button>
@@ -278,13 +290,6 @@
   .error {
     color: var(--danger);
     font-size: 12px;
-  }
-
-  .success {
-    color: var(--status-final);
-    font-size: 11px;
-    word-break: break-all;
-    margin-top: 8px;
   }
 
   .actions {
