@@ -2,14 +2,13 @@ use crate::comments::read_chapter_comments;
 use crate::compile::{
     build_book_html, build_chapters_html, escape_html, html_to_markdown,
     html_to_text, load_final_chapters, marked_review_styles, read_book_settings, read_chapter_html,
-    export_filename_stem, read_section_html, sanitize_export_filename, sanitize_filename,
+    export_filename_stem, read_section_html, sanitize_filename,
     strip_review_marks, write_export_to, BookSettings, LibraryPreferences,
 };
 use crate::library::{load_section_chapters, CHAPTERS, CHARACTERS, RESEARCH};
 use crate::library::{atomic_write, read_manifest, require_active_library, validate_chapter_id};
 use crate::models::{ChapterMeta, CompileOptions, ExportChaptersOptions, ExportResult};
 use chrono::Utc;
-use std::fs;
 use std::path::PathBuf;
 
 fn normalize_export_section(section: Option<&str>) -> Result<&'static str, String> {
