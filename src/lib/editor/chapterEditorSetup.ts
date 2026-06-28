@@ -15,6 +15,7 @@ import { Comment, Deletion, Insertion } from "$lib/editor/marks";
 import { TrackChangesPlugin } from "$lib/editor/trackChanges";
 import { createLibraryImageExtension } from "$lib/editor/libraryImage";
 import { handleEditorMousedown } from "$lib/editor/focus";
+import { prepareHtmlForPaste } from "$lib/export/sanitizeHtml";
 
 export interface SpellContextMenuState {
   x: number;
@@ -54,6 +55,7 @@ export interface ChapterEditorContextHandlers {
   nextGen: () => number;
   isCurrentGen: (gen: number) => boolean;
   setContextMenu: (menu: SpellContextMenuState | null) => void;
+  notifyBlockedImagePaste: () => void;
 }
 
 export function buildChapterEditorProps(
@@ -65,6 +67,23 @@ export function buildChapterEditorProps(
     attributes: {
       class: "chapter-prose",
       spellcheck: spellcheckOn ? "true" : "false",
+    },
+    handlePaste: (_view: EditorView, event: ClipboardEvent) => {
+      const clipboard = event.clipboardData;
+      if (!clipboard) return false;
+
+      const html = clipboard.getData("text/html")?.trim();
+      if (html) {
+        const { html: safe, blockedImages } = prepareHtmlForPaste(html);
+        if (blockedImages) {
+          handlers.notifyBlockedImagePaste();
+        }
+        if (safe) {
+          getEd().chain().focus().insertContent(safe).run();
+        }
+        return true;
+      }
+      return false;
     },
     handleDOMEvents: {
       mousedown: (view: EditorView, event: Event) => {

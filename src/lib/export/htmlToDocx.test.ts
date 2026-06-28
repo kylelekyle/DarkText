@@ -125,6 +125,29 @@ describe("buildDocxBlob", () => {
     expect(xml).not.toContain("could not be embedded");
   });
 
+  it("does not embed remote or asset-protocol images", async () => {
+    const blob = await buildDocxBlob(
+      [
+        {
+          title: "Remote",
+          html:
+            '<p><img src="https://evil.test/track.png" /></p>' +
+            '<p><img src="asset://localhost/C:/secret.png" /></p>',
+        },
+      ],
+      {},
+      "default",
+      undefined,
+    );
+    const xml = await documentXml(blob);
+    expect(xml).toContain("could not be embedded");
+    const zip = await JSZip.loadAsync(new Uint8Array(await blob.arrayBuffer()));
+    const mediaFiles = Object.keys(zip.files).filter((name) =>
+      name.startsWith("word/media/"),
+    );
+    expect(mediaFiles.length).toBe(0);
+  });
+
   it("falls back to placeholder text when an image can't be loaded", async () => {
     const blob = await buildDocxBlob(
       [

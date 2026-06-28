@@ -422,6 +422,14 @@ pub fn compile_book(library_path: String, options: CompileOptions) -> Result<Exp
     }
 }
 
+fn export_format_from_filename(filename: &str) -> String {
+    std::path::Path::new(filename)
+        .extension()
+        .and_then(|e| e.to_str())
+        .map(str::to_ascii_lowercase)
+        .unwrap_or_else(|| "bin".to_string())
+}
+
 #[tauri::command]
 pub fn write_export_bytes(
     library_path: String,
@@ -431,11 +439,12 @@ pub fn write_export_bytes(
 ) -> Result<ExportResult, String> {
     let path = PathBuf::from(&library_path);
     require_active_library(&path)?;
+    let format = export_format_from_filename(&filename);
     let preview = format!("{filename} ({} bytes)", bytes.len());
     let out = write_export_to(&path, &filename, &bytes, output_dir.as_deref())?;
     Ok(ExportResult {
         path: out,
-        format: "docx".to_string(),
+        format,
         preview,
     })
 }

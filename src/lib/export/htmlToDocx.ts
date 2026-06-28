@@ -20,7 +20,7 @@ import {
   type ParagraphChild,
 } from "docx";
 import * as api from "$lib/api";
-import { convertFileSrc } from "@tauri-apps/api/core";
+import { isBlockedNavUrl, isSafeLibraryImagePath } from "$lib/export/sanitizeHtml";
 import type { CompilePreset } from "$lib/types";
 
 export interface DocxReviewContext {
@@ -104,18 +104,9 @@ async function loadImageBytes(
     return new TextEncoder().encode(decodeURIComponent(data));
   }
 
-  if (/^https?:\/\//i.test(trimmed) || trimmed.startsWith("asset://")) {
-    try {
-      const url = trimmed.startsWith("asset://") ? convertFileSrc(trimmed.replace("asset://localhost/", "")) : trimmed;
-      const res = await fetch(url);
-      if (!res.ok) return null;
-      return new Uint8Array(await res.arrayBuffer());
-    } catch {
-      return null;
-    }
-  }
+  if (isBlockedNavUrl(trimmed)) return null;
 
-  if (!libraryPath) return null;
+  if (!libraryPath || !isSafeLibraryImagePath(trimmed)) return null;
   try {
     return await api.readFileBytes(libraryPath, trimmed);
   } catch {

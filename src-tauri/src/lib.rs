@@ -25,7 +25,8 @@ pub use search::*;
 pub use review_summary::*;
 pub use mindmap::{read_mindmap, write_mindmap, MindMapData, MindMapNodePos};
 pub use library::{
-    close_library, create_library, is_library_path, open_library, save_library_manifest,
+    close_library, create_library, is_library_path, open_library, trash_library_folder,
+    save_library_manifest,
     get_book_settings, save_book_settings, list_research_chapters, list_character_chapters,
     get_compile_chapters,
 };
@@ -80,6 +81,7 @@ pub fn run() {
             create_library,
             is_library_path,
             open_library,
+            trash_library_folder,
             close_library,
             create_chapter,
             read_chapter,

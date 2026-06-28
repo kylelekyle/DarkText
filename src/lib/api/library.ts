@@ -16,6 +16,10 @@ export async function isLibraryPath(path: string): Promise<boolean> {
   return invoke("is_library_path", { path });
 }
 
+export async function trashLibraryFolder(path: string): Promise<void> {
+  return invoke("trash_library_folder", { path });
+}
+
 export async function closeLibrary(): Promise<void> {
   return invoke("close_library");
 }

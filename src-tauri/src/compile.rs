@@ -665,6 +665,7 @@ mod tests {
         let _ = fs::remove_dir_all(&dir);
     }
 
+    #[test]
     fn write_export_creates_file() {
         let dir = std::env::temp_dir().join("darktext-export-test");
         let _ = fs::remove_dir_all(&dir);

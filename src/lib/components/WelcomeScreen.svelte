@@ -7,6 +7,9 @@
   import { getAppSettings } from "$lib/utils/appSettings";
   import WelcomeFirstRun from "./welcome/WelcomeFirstRun.svelte";
   import WelcomeRecentList from "./welcome/WelcomeRecentList.svelte";
+  import WelcomeLibraryContextMenu from "./welcome/WelcomeLibraryContextMenu.svelte";
+  import WelcomeDeleteLibraryDialog from "./welcome/WelcomeDeleteLibraryDialog.svelte";
+  import * as api from "$lib/api/library";
   import {
     getPrefs,
     refreshRecentLibraries,
@@ -14,6 +17,7 @@
     savePrefs,
     type AppPrefs,
   } from "$lib/utils/recentLibraries";
+  import { clearWorkspaceSessionForLibrary } from "$lib/utils/workspaceSession";
 
   let libraryName = $state("");
   let loading = $state(false);
@@ -22,6 +26,19 @@
   let lastLibrary = $state<string | null>(null);
   let showFirstRun = $state(false);
   let prefs = $state<AppPrefs>(getPrefs());
+  let removeTarget = $state<string | null>(null);
+  let removingLibrary = $state(false);
+  let libraryContextMenu = $state<{ path: string; x: number; y: number } | null>(null);
+
+  function openLibraryContextMenu(e: MouseEvent, path: string) {
+    e.preventDefault();
+    if (loading) return;
+    libraryContextMenu = { path, x: e.clientX, y: e.clientY };
+  }
+
+  function closeLibraryContextMenu() {
+    libraryContextMenu = null;
+  }
 
   onMount(() => {
     void (async () => {
@@ -122,6 +139,41 @@
     }
   }
 
+  function requestRemoveLibrary(path: string) {
+    removeTarget = path;
+  }
+
+  function cancelRemoveLibrary() {
+    if (removingLibrary) return;
+    removeTarget = null;
+  }
+
+  async function confirmRemoveLibrary(removeFromDisk: boolean) {
+    if (!removeTarget) return;
+    const path = removeTarget;
+    removingLibrary = true;
+    localError = null;
+    try {
+      if (removeFromDisk) {
+        await api.trashLibraryFolder(path);
+      }
+      removeRecentLibrary(path);
+      clearWorkspaceSessionForLibrary(path);
+      recent = await refreshRecentLibraries();
+      lastLibrary = recent[0] ?? null;
+      removeTarget = null;
+      app.showToast(
+        removeFromDisk
+          ? "Library moved to Recycle Bin"
+          : "Removed from recent libraries",
+      );
+    } catch (e) {
+      localError = formatError(e);
+    } finally {
+      removingLibrary = false;
+    }
+  }
+
   async function handleNewChapter() {
     localError = null;
     const selected = await open({
@@ -148,6 +200,8 @@
   }
 </script>
 
+<svelte:window onclick={closeLibraryContextMenu} />
+
 <div class="welcome">
   <div class="bg-grid" aria-hidden="true"></div>
   <div class="bg-glow" aria-hidden="true"></div>
@@ -168,6 +222,7 @@
         <button
           class="continue-btn"
           onclick={() => handleOpenLibrary(lastLibrary!)}
+          oncontextmenu={(e) => openLibraryContextMenu(e, lastLibrary!)}
           disabled={loading}
         >
           <span class="continue-label">Continue writing</span>
@@ -218,7 +273,30 @@
         {loading}
         {libraryLabel}
         onOpen={(path) => void handleOpenLibrary(path)}
+        onRequestRemove={requestRemoveLibrary}
+        onContextMenu={openLibraryContextMenu}
       />
+
+      {#if libraryContextMenu}
+        <WelcomeLibraryContextMenu
+          path={libraryContextMenu.path}
+          x={libraryContextMenu.x}
+          y={libraryContextMenu.y}
+          onOpen={(path) => void handleOpenLibrary(path)}
+          onRequestRemove={requestRemoveLibrary}
+          onClose={closeLibraryContextMenu}
+        />
+      {/if}
+
+      {#if removeTarget}
+        <WelcomeDeleteLibraryDialog
+          libraryName={libraryLabel(removeTarget)}
+          libraryPath={removeTarget}
+          removing={removingLibrary}
+          onClose={cancelRemoveLibrary}
+          onConfirm={(removeFromDisk) => void confirmRemoveLibrary(removeFromDisk)}
+        />
+      {/if}
 
       {#if localError || app.error}
         <p class="error">{localError || app.error}</p>

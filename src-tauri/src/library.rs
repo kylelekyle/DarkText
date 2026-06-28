@@ -325,6 +325,22 @@ pub fn is_library_path(path: String) -> bool {
     library_path.is_dir() && library_manifest_path(&library_path).is_file()
 }
 
+/// Moves a library folder to the system Recycle Bin. Does not require an open library.
+#[tauri::command]
+pub fn trash_library_folder(path: String) -> Result<(), String> {
+    let library_path = PathBuf::from(&path);
+    if !library_manifest_path(&library_path).is_file() {
+        return Err("Not a valid library folder".into());
+    }
+    let canonical = fs::canonicalize(&library_path)
+        .map_err(|e| format!("Library folder not found: {e}"))?;
+    if !canonical.is_dir() {
+        return Err("Not a valid library folder".into());
+    }
+    clear_active_library();
+    trash::delete(&canonical).map_err(|e| format!("Could not move to Recycle Bin: {e}"))
+}
+
 #[tauri::command]
 pub fn open_library(path: String) -> Result<LibraryManifest, String> {
     let library_path = PathBuf::from(&path);
@@ -460,6 +476,15 @@ mod tests {
     }
 
     #[test]
+    fn trash_library_folder_rejects_missing_manifest() {
+        let dir = temp_dir("trash-invalid");
+        let err = trash_library_folder(dir.to_string_lossy().to_string()).unwrap_err();
+        assert!(err.contains("Not a valid library"));
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    #[serial(active_library)]
     fn is_library_path_requires_directory_with_manifest() {
         let dir = temp_dir("is-library");
         let path = dir.to_string_lossy().to_string();

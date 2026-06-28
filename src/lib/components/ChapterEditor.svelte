@@ -47,6 +47,7 @@
     setContextMenu: (menu: SpellContextMenuState | null) => {
       contextMenu = menu;
     },
+    notifyBlockedImagePaste: () => app.showToast("Please use Insert Image"),
   };
 
   function onMountPaddingMousedown(e: MouseEvent) {

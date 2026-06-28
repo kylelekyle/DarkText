@@ -3,10 +3,12 @@
     recent: string[];
     loading: boolean;
     onOpen: (path: string) => void;
+    onRequestRemove: (path: string) => void;
+    onContextMenu: (e: MouseEvent, path: string) => void;
     libraryLabel: (path: string) => string;
   }
 
-  let { recent, loading, onOpen, libraryLabel }: Props = $props();
+  let { recent, loading, onOpen, onRequestRemove, onContextMenu, libraryLabel }: Props = $props();
 </script>
 
 {#if recent.length > 0}
@@ -14,11 +16,12 @@
     <h3>Recent Libraries</h3>
     <ul class="recent-list">
       {#each recent as path, i}
-        <li>
+        <li class="recent-row">
           <button
             class="recent-item"
             class:highlight={i === 0}
             onclick={() => onOpen(path)}
+            oncontextmenu={(e) => onContextMenu(e, path)}
             disabled={loading}
           >
             <span class="recent-icon" aria-hidden="true"></span>
@@ -29,6 +32,16 @@
             {#if i === 0}
               <span class="recent-badge">Last</span>
             {/if}
+          </button>
+          <button
+            type="button"
+            class="recent-remove"
+            aria-label="Remove {libraryLabel(path)} from recent libraries"
+            title="Remove library"
+            disabled={loading}
+            onclick={() => onRequestRemove(path)}
+          >
+            ×
           </button>
         </li>
       {/each}
@@ -58,11 +71,18 @@
     gap: 6px;
   }
 
+  .recent-row {
+    display: flex;
+    align-items: stretch;
+    gap: 6px;
+  }
+
   .recent-item {
     display: flex;
     align-items: center;
     gap: 12px;
-    width: 100%;
+    flex: 1;
+    min-width: 0;
     padding: 10px 12px;
     border: 1px solid var(--border);
     border-radius: var(--radius);
@@ -81,6 +101,31 @@
   }
 
   .recent-item:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+
+  .recent-remove {
+    flex-shrink: 0;
+    width: 36px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--bg-surface);
+    color: var(--text-muted);
+    font-size: 18px;
+    line-height: 1;
+    cursor: pointer;
+    transition: border-color var(--transition-smooth), color var(--transition-smooth),
+      background var(--transition-smooth);
+  }
+
+  .recent-remove:hover:not(:disabled) {
+    border-color: rgba(196, 92, 92, 0.45);
+    color: #e8a0a0;
+    background: rgba(196, 92, 92, 0.08);
+  }
+
+  .recent-remove:disabled {
     opacity: 0.6;
     cursor: not-allowed;
   }
@@ -123,4 +168,5 @@
     border: 1px solid var(--accent-dim);
     border-radius: var(--radius-sm);
   }
+
 </style>
