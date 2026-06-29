@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { suppressNativeContextMenu } from "./suppressNativeContextMenu";
+import { suppressNativeContextMenu } from "./platform";
 
 describe("suppressNativeContextMenu", () => {
   it("prevents default on generic elements", () => {

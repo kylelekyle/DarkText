@@ -28,7 +28,7 @@
   import { reviewStore } from "$lib/stores/review.svelte";
   import { libraryStore } from "$lib/stores/library.svelte";
   import type { ChapterSection } from "$lib/types";
-  import { clearSidebarSelectionOnOutsideClick } from "$lib/utils/sidebarSelectionClear";
+  import { clearSidebarSelectionOnOutsideClick } from "$lib/utils/sidebarSelection";
 
   onMount(() => {
     if (app.confirmDialog) app.resolveConfirm(false);

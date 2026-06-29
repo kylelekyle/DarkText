@@ -1,7 +1,7 @@
 import { convertFileSrc } from "@tauri-apps/api/core";
 import * as api from "$lib/api";
 import type { FontOption } from "$lib/types";
-import { fontCssValue, fontOptionLabel } from "$lib/utils/fontFamily";
+import { fontCssValue, fontOptionLabel } from "$lib/utils/typography";
 
 const REFRESH_MS = 120_000;
 const loadedCustom = new Set<string>();

@@ -3,8 +3,7 @@
   import { app } from "$lib/stores/app.svelte";
   import { fontStore } from "$lib/stores/fonts.svelte";
   import { setParagraphAlignment } from "$lib/editor/align";
-  import { FONT_SIZES, fontSizeLabel, resolveFontSize } from "$lib/utils/fontSizes";
-  import { primaryFamily } from "$lib/utils/fontFamily";
+  import { FONT_SIZES, fontSizeLabel, primaryFamily, resolveFontSize } from "$lib/utils/typography";
   import FontFamilyPicker from "./FontFamilyPicker.svelte";
 
 

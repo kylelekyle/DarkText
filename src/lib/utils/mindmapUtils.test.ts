@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { mindmapLibraryFingerprint } from "./mindmapFingerprint";
+import { mindmapLibraryFingerprint } from "./mindmapUtils";
 import type { ChapterMeta } from "$lib/types";
 
 const ch = (id: string, title: string, order: number, status: ChapterMeta["status"]): ChapterMeta => ({

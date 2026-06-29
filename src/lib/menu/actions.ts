@@ -2,7 +2,7 @@ import { open } from "@tauri-apps/plugin-dialog";
 import type { Editor } from "@tiptap/core";
 import { app } from "$lib/stores/app.svelte";
 import { chapterStore } from "$lib/stores/chapter.svelte";
-import { sectionItemLabel } from "$lib/utils/sectionLabels";
+import { sectionItemLabel } from "$lib/utils/chapterDisplay";
 import {
   insertDivider,
   insertImage,

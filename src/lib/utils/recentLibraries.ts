@@ -1,6 +1,6 @@
 import * as api from "$lib/api/library";
 import { getAppSettings, saveAppSettings } from "./appSettings";
-import { isTauriRuntime } from "./isTauriRuntime";
+import { isTauriRuntime } from "./platform";
 
 const STORAGE_KEY = "darktext-recent-libraries";
 const MAX_RECENT = 6;

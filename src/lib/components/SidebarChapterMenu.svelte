@@ -2,8 +2,7 @@
   import { onMount } from "svelte";
   import { app } from "$lib/stores/app.svelte";
   import type { ChapterMeta, ChapterSection, ChapterStatus } from "$lib/types";
-  import { clampMenuPosition } from "$lib/utils/menuPosition";
-  import { statusLabelFull } from "$lib/utils/statusLabel";
+  import { clampMenuPosition, statusLabelFull } from "$lib/utils/chapterDisplay";
 
   interface Props {
     x: number;

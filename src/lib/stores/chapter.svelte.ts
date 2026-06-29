@@ -1,8 +1,7 @@
 import type { Editor } from "@tiptap/core";
 import * as api from "$lib/api";
 import { libraryStore } from "$lib/stores/library.svelte";
-import { countWords } from "$lib/utils/wordCount";
-import { estimatePages, htmlToPlain, statsFromHtml } from "$lib/utils/stats";
+import { countWords, estimatePages, htmlToPlain, statsFromHtml } from "$lib/utils/stats";
 import { sanitizeHtmlForDisplay } from "$lib/export/sanitizeHtml";
 import { formatError } from "$lib/utils/errors";
 import { defaultAppSettings, type AppSettings } from "$lib/utils/appSettings";

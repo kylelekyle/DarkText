@@ -6,7 +6,7 @@
   import { app } from "$lib/stores/app.svelte";
   import { formatError } from "$lib/utils/errors";
   import { outputHint } from "$lib/export/exportPresets";
-  import { mergeFinalChapterOrder } from "$lib/utils/compileChapterReorder";
+  import { mergeFinalChapterOrder } from "$lib/utils/compileUtils";
   import type { CompileOptions, ExportFormat } from "$lib/types";
 
   let format = $state<ExportFormat>(app.settings.defaultCompileFormat);

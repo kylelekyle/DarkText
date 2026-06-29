@@ -6,7 +6,7 @@ import type {
   CommentThread,
   LibraryManifest,
 } from "$lib/types";
-import { isTauriRuntime } from "$lib/utils/isTauriRuntime";
+import { isTauriRuntime } from "$lib/utils/platform";
 import { stripReviewMarks as stripReviewMarksLocal } from "./stripReviewMarks";
 
 export interface LoadedChapter {

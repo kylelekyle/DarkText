@@ -1,6 +1,6 @@
 import { chapterStore } from "$lib/stores/chapter.svelte";
 import type { ConfirmDialogState } from "$lib/types";
-import { waitForPaint } from "$lib/utils/idle";
+import { waitForPaint } from "$lib/utils/platform";
 
 export interface ConfirmFlowSlice {
   confirmDialog: ConfirmDialogState | null;

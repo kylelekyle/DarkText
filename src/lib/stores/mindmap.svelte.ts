@@ -14,8 +14,8 @@ import type {
   MindMapLink,
   MindMapNode,
 } from "$lib/types";
-import { nodeKey } from "$lib/utils/mindmapLayout";
-import { statusLabelShort } from "$lib/utils/statusLabel";
+import { statusLabelShort } from "$lib/utils/chapterDisplay";
+import { nodeKey } from "$lib/utils/mindmapUtils";
 
 export const WORLD_W = 1800;
 export const WORLD_H = 1400;

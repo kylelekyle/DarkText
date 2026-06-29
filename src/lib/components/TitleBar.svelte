@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from "svelte";
-  import { isTauriApp, requestAppClose } from "$lib/utils/windowClose";
+  import { isTauriApp, requestAppClose } from "$lib/utils/platform";
 
   let maximized = $state(false);
 

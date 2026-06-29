@@ -13,8 +13,7 @@ import {
   clearWorkspaceSession,
   persistWorkspaceSession,
 } from "$lib/utils/workspaceSession";
-import { htmlToPlain } from "$lib/utils/stats";
-import { countWords } from "$lib/utils/wordCount";
+import { countWords, htmlToPlain } from "$lib/utils/stats";
 import { chapterStore } from "./chapter.svelte";
 import { libraryStore } from "./library.svelte";
 import { reviewStore } from "./review.svelte";

@@ -3,8 +3,8 @@
   import { app } from "$lib/stores/app.svelte";
   import { sidebarSelection } from "$lib/stores/sidebarSelection.svelte";
   import type { ChapterMeta, ChapterSection } from "$lib/types";
-  import { statusBadgeLabel } from "$lib/utils/statusLabel";
-  import { handleSidebarChapterClick } from "$lib/utils/sidebarSelectionClick";
+  import { statusBadgeLabel } from "$lib/utils/chapterDisplay";
+  import { handleSidebarChapterClick } from "$lib/utils/sidebarSelection";
   import {
     draggedOffsetPx,
     gapPositionFromPointerY,

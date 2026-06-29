@@ -1,8 +1,8 @@
 <script lang="ts">
   import { tick } from "svelte";
   import { fontStore } from "$lib/stores/fonts.svelte";
-  import { primaryFamily } from "$lib/utils/fontFamily";
-  import { portal } from "$lib/utils/portal";
+  import { portal } from "$lib/utils/platform";
+  import { primaryFamily } from "$lib/utils/typography";
 
   interface Props {
     value: string;

@@ -1,5 +1,5 @@
 import * as api from "$lib/api";
-import { isTauriRuntime } from "$lib/utils/isTauriRuntime";
+import { isTauriRuntime } from "$lib/utils/platform";
 
 /** Local fallback — kept in sync with Rust compile::sanitize_filename. */
 export function sanitizeFilenameLocal(title: string): string {

@@ -1,5 +1,5 @@
 import type { MindMapLink, MindMapNode } from "$lib/types";
-import { nodeKey } from "$lib/utils/mindmapLayout";
+import { nodeKey } from "$lib/utils/mindmapUtils";
 
 export function linkKey(a: string, b: string): string {
   return a < b ? `${a}|${b}` : `${b}|${a}`;

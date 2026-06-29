@@ -3,7 +3,7 @@
   import { app } from "$lib/stores/app.svelte";
   import { fontStore } from "$lib/stores/fonts.svelte";
   import { getAppSettings } from "$lib/utils/appSettings";
-  import { initWindowCloseHandler } from "$lib/utils/windowClose";
+  import { initWindowCloseHandler } from "$lib/utils/platform";
   import { restoreWorkspaceSession } from "$lib/utils/workspaceSession";
   import TitleBar from "$lib/components/TitleBar.svelte";
   import WelcomeScreen from "$lib/components/WelcomeScreen.svelte";

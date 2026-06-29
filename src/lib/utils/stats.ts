@@ -1,7 +1,14 @@
-import type { ChapterMeta, ChapterStats } from "$lib/types";
-import { countWords } from "./wordCount";
+// Expanded with: wordCount.ts, bookTotals.ts
+
+import type { ChapterMeta, ChapterSection, ChapterStats } from "$lib/types";
 
 export const WORDS_PER_PAGE = 250;
+
+export function countWords(text: string): number {
+  const trimmed = text.trim();
+  if (!trimmed) return 0;
+  return trimmed.split(/\s+/).filter(Boolean).length;
+}
 
 /** Mirrors Rust compile::html_to_text for consistent word/char counts. */
 export function htmlToPlain(html: string): string {
@@ -90,4 +97,19 @@ export function loadChapterStats(
     stats[chapter.id] = statsFromMeta(chapter);
   }
   return stats;
+}
+
+export function deriveBookTotals(
+  chapters: ChapterMeta[],
+  chapterStats: Record<string, ChapterStats>,
+  activeChapterId: string | null,
+  activeSection: ChapterSection,
+  wordCount: number,
+  charCount: number,
+) {
+  const active =
+    activeChapterId && activeSection === "chapters"
+      ? { chapterId: activeChapterId, words: wordCount, chars: charCount }
+      : null;
+  return computeBookTotals(chapters, chapterStats, active);
 }

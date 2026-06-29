@@ -1,6 +1,6 @@
 import * as api from "$lib/api";
 import type { BookSettings, ChapterMeta, CompileOptions, CompilePreset, ExportResult } from "$lib/types";
-import { compileChapterHeading } from "$lib/utils/compileDisplayPrefs";
+import { compileChapterHeading } from "$lib/utils/compileUtils";
 import { buildDocxBlob } from "./htmlToDocx";
 import { loadChaptersBulk, stripForPublish } from "./pipeline";
 import { sanitizeFilename } from "./sanitize";

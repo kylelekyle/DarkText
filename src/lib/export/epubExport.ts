@@ -1,7 +1,7 @@
 import JSZip from "jszip";
 import * as api from "$lib/api";
 import type { BookSettings, CompileOptions, ExportResult } from "$lib/types";
-import { compileChapterHeading } from "$lib/utils/compileDisplayPrefs";
+import { compileChapterHeading } from "$lib/utils/compileUtils";
 import { loadChaptersBulk, stripForPublish } from "./pipeline";
 import { sanitizeFilename } from "./sanitize";
 import { writeExportBytes } from "./writeExport";

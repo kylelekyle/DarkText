@@ -6,7 +6,7 @@
   import {
     compileShowChapterNumbers,
     compileShowChapterTitles,
-  } from "$lib/utils/compileDisplayPrefs";
+  } from "$lib/utils/compileUtils";
 
   interface Props {
     chapters: ChapterMeta[];

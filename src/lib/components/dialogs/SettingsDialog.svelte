@@ -9,7 +9,7 @@
     type AppSettings,
   } from "$lib/utils/appSettings";
   import type { CompilePreset, ExportFormat } from "$lib/types";
-  import { FONT_SIZES, fontSizeLabel } from "$lib/utils/fontSizes";
+  import { FONT_SIZES, fontSizeLabel } from "$lib/utils/typography";
   import FontFamilyPicker from "../FontFamilyPicker.svelte";
 
   type Tab = "general" | "editor" | "compile" | "library";

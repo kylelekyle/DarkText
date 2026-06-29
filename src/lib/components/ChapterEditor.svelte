@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onDestroy, onMount } from "svelte";
-  import { deferHeavyWork } from "$lib/utils/idle";
+  import { deferHeavyWork } from "$lib/utils/platform";
   import { Editor } from "@tiptap/core";
   import {
     buildChapterEditorProps,

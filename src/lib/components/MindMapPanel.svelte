@@ -1,8 +1,13 @@
 <script lang="ts">
   import { app } from "$lib/stores/app.svelte";
   import { mindmapStore, WORLD_H, WORLD_W } from "$lib/stores/mindmap.svelte";
-  import { mindmapLibraryFingerprint } from "$lib/utils/mindmapFingerprint";
-  import { NODE_W, linkPath, nodeCenter, nodeKey } from "$lib/utils/mindmapLayout";
+  import {
+    linkPath,
+    mindmapLibraryFingerprint,
+    NODE_W,
+    nodeCenter,
+    nodeKey,
+  } from "$lib/utils/mindmapUtils";
 
   let viewportEl = $state<HTMLDivElement | null>(null);
   let worldEl = $state<HTMLDivElement | null>(null);

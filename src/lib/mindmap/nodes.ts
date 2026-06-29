@@ -5,7 +5,7 @@ import type {
   MindMapLink,
   MindMapNode,
 } from "$lib/types";
-import { defaultNodePosition, nodeKey } from "$lib/utils/mindmapLayout";
+import { defaultNodePosition, nodeKey } from "$lib/utils/mindmapUtils";
 import { filterValidLinks } from "./links";
 
 export type BuildMindMapNodesInput = {

@@ -4,7 +4,7 @@
   import { chapterStore } from "$lib/stores/chapter.svelte";
   import { libraryStore } from "$lib/stores/library.svelte";
   import { sidebarSelection } from "$lib/stores/sidebarSelection.svelte";
-  import { deriveBookTotals } from "$lib/utils/bookTotals";
+  import { deriveBookTotals } from "$lib/utils/stats";
   import type { ChapterMeta, ChapterSection } from "$lib/types";
 
   const bookTotals = $derived(

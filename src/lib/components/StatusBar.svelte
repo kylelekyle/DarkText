@@ -3,9 +3,8 @@
   import { chapterStore } from "$lib/stores/chapter.svelte";
   import { libraryStore } from "$lib/stores/library.svelte";
   import { reviewStore } from "$lib/stores/review.svelte";
-  import { deriveBookTotals } from "$lib/utils/bookTotals";
-  import { formatCompact } from "$lib/utils/stats";
-  import { statusLabelShort } from "$lib/utils/statusLabel";
+  import { deriveBookTotals, formatCompact } from "$lib/utils/stats";
+  import { statusLabelShort } from "$lib/utils/chapterDisplay";
   import GoalProgress from "./GoalProgress.svelte";
 
   const bookTotals = $derived(
