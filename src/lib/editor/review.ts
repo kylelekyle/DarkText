@@ -81,7 +81,8 @@ export function syncChangesFromHtml(
   const result: TrackedChange[] = [];
 
   for (const el of doc.querySelectorAll("[data-change-id]")) {
-    const markId = el.getAttribute("data-change-id")!;
+    const markId = el.getAttribute("data-change-id");
+    if (!markId) continue;
     const type = el.classList.contains("dt-deletion") ? "deletion" : "insertion";
     const prev = existingMap.get(markId);
     const text = el.textContent?.slice(0, 80) ?? "";
