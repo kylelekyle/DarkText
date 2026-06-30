@@ -710,18 +710,31 @@ class AppStore {
     await libraryStore.refreshCharacters();
   }
 
+  syncReviewPanelDom() {
+    requestAnimationFrame(() => {
+      const el = document.querySelector("aside.review-slot");
+      if (!el) return;
+      const open =
+        this.mode === "editor" && !this.focusMode && !this.reviewPanelDismissed;
+      el.classList.toggle("is-open", open);
+    });
+  }
+
   openReviewPanel() {
     this.reviewPanelDismissed = false;
+    this.syncReviewPanelDom();
   }
 
   toggleReviewPanel() {
     this.reviewPanelDismissed = !this.reviewPanelDismissed;
+    this.syncReviewPanelDom();
   }
 
   setMode(mode: AppMode) {
     this.mode = mode;
     if (mode === "editor") this.reviewPanelDismissed = false;
     reviewStore.setMode(mode);
+    this.syncReviewPanelDom();
   }
 
   toggleFocusMode() {
@@ -735,6 +748,7 @@ class AppStore {
       this.focusMode = false;
       this.sidebarCollapsed = this.sidebarBeforeFocus;
     }
+    this.syncReviewPanelDom();
   }
 
   toggleMindMap() {

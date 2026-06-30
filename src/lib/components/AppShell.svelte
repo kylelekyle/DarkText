@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onDestroy, onMount } from "svelte";
+  import { onDestroy, onMount, tick } from "svelte";
   import type { Editor } from "@tiptap/core";
   import { app } from "$lib/stores/app.svelte";
   import Sidebar from "./Sidebar.svelte";
@@ -34,6 +34,7 @@
   import { clearSidebarSelectionOnOutsideClick } from "$lib/utils/sidebarSelection";
 
   onMount(() => {
+    void tick().then(() => app.syncReviewPanelDom());
     if (app.confirmDialog) app.resolveConfirm(false);
     app.showQuickActions = false;
     for (const el of document.querySelectorAll("body > .overlay")) {
