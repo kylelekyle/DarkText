@@ -31,6 +31,9 @@
   import type { ChapterSection } from "$lib/types";
   import { clearSidebarSelectionOnOutsideClick } from "$lib/utils/sidebarSelection";
 
+  const inReviewMode = $derived(app.mode === "editor" && !app.focusMode);
+  const reviewPanelVisible = $derived(inReviewMode && app.showReviewPanel);
+
   onMount(() => {
     if (app.confirmDialog) app.resolveConfirm(false);
     app.showQuickActions = false;
@@ -171,7 +174,7 @@
     <Toolbar editor={app.activeEditorRef} />
   </div>
 
-  <div class="workspace">
+  <div class="workspace" class:review-open={reviewPanelVisible}>
     <div
       class="sidebar-slot"
       class:hidden={app.focusMode}
@@ -294,8 +297,8 @@
       </div>
     </main>
 
-    {#if app.mode === "editor" && app.showReviewPanel && !app.focusMode}
-      <aside class="review-slot">
+    {#if inReviewMode}
+      <aside class="review-slot" class:collapsed={!app.showReviewPanel}>
         <div class="review-header">
           <span class="review-title">Review</span>
           <button
@@ -393,16 +396,22 @@
   }
 
   .workspace {
-    display: flex;
+    display: grid;
     flex: 1;
     min-height: 0;
     overflow: hidden;
+    grid-template-columns: var(--slot-width) minmax(0, 1fr);
+  }
+
+  .workspace.review-open {
+    grid-template-columns: var(--slot-width) minmax(0, 1fr) 280px;
   }
 
   .sidebar-slot {
-    flex-shrink: 0;
+    grid-column: 1;
     overflow: hidden;
     width: var(--slot-width);
+    min-width: 0;
     height: 100%;
     opacity: 1;
     transition: width var(--transition-focus), opacity var(--transition-smooth);
@@ -419,9 +428,10 @@
   }
 
   .editor-area {
-    flex: 1;
+    grid-column: 2;
     display: flex;
     flex-direction: column;
+    min-width: 0;
     min-height: 0;
     overflow: hidden;
     background: var(--editor-canvas);
@@ -582,14 +592,28 @@
   }
 
   .review-slot {
-    flex-shrink: 0;
+    grid-column: 3;
+    grid-row: 1;
     width: 280px;
+    min-width: 280px;
     display: flex;
     flex-direction: column;
     background: var(--bg-surface);
     border-left: 1px solid var(--border-subtle);
     overflow: hidden;
+    z-index: 2;
+    transition: width var(--transition-smooth), min-width var(--transition-smooth),
+      opacity var(--transition-smooth);
     animation: review-in 0.22s var(--ease-focus);
+  }
+
+  .review-slot.collapsed {
+    width: 0;
+    min-width: 0;
+    opacity: 0;
+    pointer-events: none;
+    border-left-color: transparent;
+    overflow: hidden;
   }
 
   @keyframes review-in {

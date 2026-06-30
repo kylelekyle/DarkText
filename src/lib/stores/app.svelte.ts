@@ -713,7 +713,11 @@ class AppStore {
 
   setMode(mode: AppMode) {
     this.mode = mode;
-    this.showReviewPanel = mode === "editor";
+    if (mode === "editor") {
+      this.showReviewPanel = true;
+    } else {
+      this.showReviewPanel = false;
+    }
     reviewStore.setMode(mode);
   }
 

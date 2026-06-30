@@ -256,8 +256,8 @@ export function buildMenuActions(ctx: ActionContext): MenuAction[] {
       label: "Show Review panel",
       group: "Review",
       run: () => {
-        app.setMode("editor");
-        app.openReviewPanel();
+        if (app.mode !== "editor") app.setMode("editor");
+        else app.openReviewPanel();
       },
     },
     // Book
