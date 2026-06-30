@@ -10,6 +10,7 @@
   import { libraryStore } from "$lib/stores/library.svelte";
   import { reviewStore } from "$lib/stores/review.svelte";
   import { focusEditorAtEnd } from "$lib/editor/focus";
+  import { prewarmSpellcheck } from "$lib/utils/spellcheck";
   import { app } from "$lib/stores/app.svelte";
   import type { EditorPane } from "$lib/stores/chapter.svelte";
   import ContextMenu from "./ContextMenu.svelte";
@@ -76,6 +77,7 @@
 
     element.addEventListener("mousedown", onMountPaddingMousedown);
     editor = ed;
+    if (spellcheck) deferHeavyWork(() => prewarmSpellcheck());
     onEditorReady?.(ed);
     mountedChapterId = chapterId;
     mountedRevision = editorRevision;

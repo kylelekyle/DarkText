@@ -188,7 +188,9 @@ export class ReviewStore {
     }
     this.pendingCommentAnchor = anchor;
     this.pendingCommentMarkId = markId;
-    this.syncCommentMarksFromEditor(editor);
+    requestAnimationFrame(() => {
+      if (!editor.isDestroyed) this.syncCommentMarksFromEditor(editor);
+    });
     return markId;
   }
 

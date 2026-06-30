@@ -26,7 +26,9 @@ function idMark(name: string, className: string, dataAttr: string) {
   });
 }
 
-export const Comment = idMark("comment", "dt-comment", "data-comment-id");
+export const Comment = idMark("comment", "dt-comment", "data-comment-id").extend({
+  inclusive: false,
+});
 export const Insertion = idMark("insertion", "dt-insertion", "data-change-id").extend({
   inclusive: true,
 });
