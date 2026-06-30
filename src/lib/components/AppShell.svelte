@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onDestroy, onMount } from "svelte";
   import type { Editor } from "@tiptap/core";
-  import { app, reviewPanelUi } from "$lib/stores/app.svelte";
+  import { app } from "$lib/stores/app.svelte";
   import Sidebar from "./Sidebar.svelte";
   import MenuBar from "./MenuBar.svelte";
   import Toolbar from "./Toolbar.svelte";
@@ -20,7 +20,7 @@
   import AddCommentDialog from "./dialogs/AddCommentDialog.svelte";
   import MindMapPanel from "./MindMapPanel.svelte";
   import ReadThroughPanel from "./ReadThroughPanel.svelte";
-  import ReviewPanel from "./ReviewPanel.svelte";
+
   import LibraryReviewDialog from "./dialogs/LibraryReviewDialog.svelte";
   import EditorHandoffDialog from "./dialogs/EditorHandoffDialog.svelte";
   import ChapterSnapshotsDialog from "./dialogs/ChapterSnapshotsDialog.svelte";
@@ -30,10 +30,6 @@
   import { libraryStore } from "$lib/stores/library.svelte";
   import type { ChapterSection } from "$lib/types";
   import { clearSidebarSelectionOnOutsideClick } from "$lib/utils/sidebarSelection";
-
-  const showReviewAside = $derived(
-    app.mode === "editor" && !app.focusMode && !reviewPanelUi.dismissed,
-  );
 
   onMount(() => {
     if (app.confirmDialog) app.resolveConfirm(false);
@@ -175,10 +171,7 @@
     <Toolbar editor={app.activeEditorRef} />
   </div>
 
-  <div
-    class="workspace"
-    class:review-layout={showReviewAside}
-  >
+  <div class="workspace">
     <div
       class="sidebar-slot"
       class:hidden={app.focusMode}
@@ -301,23 +294,6 @@
       </div>
     </main>
 
-    {#if showReviewAside}
-      <aside class="review-slot">
-        <div class="review-header">
-          <span class="review-title">Review</span>
-          <button
-            class="review-close"
-            title="Close review panel"
-            onclick={() => app.toggleReviewPanel()}
-          >
-            ×
-          </button>
-        </div>
-        <div class="review-body">
-          <ReviewPanel />
-        </div>
-      </aside>
-    {/if}
   </div>
 
   <StatusBar />
@@ -400,23 +376,16 @@
   }
 
   .workspace {
-    display: grid;
+    display: flex;
     flex: 1;
     min-height: 0;
     overflow: hidden;
-    grid-template-columns: var(--slot-width) minmax(0, 1fr);
-  }
-
-  .workspace.review-layout {
-    grid-template-columns: var(--slot-width) minmax(0, 1fr) 280px;
   }
 
   .sidebar-slot {
-    grid-column: 1;
-    grid-row: 1;
+    flex-shrink: 0;
     overflow: hidden;
     width: var(--slot-width);
-    min-width: 0;
     height: 100%;
     opacity: 1;
     transition: width var(--transition-focus), opacity var(--transition-smooth);
@@ -433,15 +402,14 @@
   }
 
   .editor-area {
-    grid-column: 2;
-    grid-row: 1;
+    flex: 1 1 0;
     display: flex;
     flex-direction: column;
     min-width: 0;
     min-height: 0;
     overflow: hidden;
     background: var(--editor-canvas);
-    transition: background var(--transition-focus);
+    transition: background var(--transition-focus), margin-right var(--transition-smooth);
   }
 
   .editor-split {
@@ -595,67 +563,6 @@
     max-width: 280px;
     text-align: center;
     line-height: 1.5;
-  }
-
-  .review-slot {
-    grid-column: 3;
-    grid-row: 1;
-    width: 280px;
-    min-width: 280px;
-    display: flex;
-    flex-direction: column;
-    background: var(--bg-elevated);
-    border-left: 2px solid var(--accent-dim);
-    overflow: hidden;
-    z-index: 4;
-    animation: review-in 0.22s var(--ease-focus);
-  }
-
-  @keyframes review-in {
-    from {
-      opacity: 0;
-      transform: translateX(12px);
-    }
-    to {
-      opacity: 1;
-      transform: translateX(0);
-    }
-  }
-
-  .review-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 8px 12px;
-    border-bottom: 1px solid var(--border-subtle);
-    flex-shrink: 0;
-  }
-
-  .review-title {
-    font-size: 10px;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    color: var(--text-muted);
-  }
-
-  .review-close {
-    font-size: 16px;
-    line-height: 1;
-    color: var(--text-muted);
-    padding: 2px 6px;
-    border-radius: 4px;
-  }
-
-  .review-close:hover {
-    color: var(--text-primary);
-    background: var(--bg-hover);
-  }
-
-  .review-body {
-    flex: 1;
-    overflow-y: auto;
-    min-height: 0;
   }
 
   .app-shell.mode-editor .editor-area {

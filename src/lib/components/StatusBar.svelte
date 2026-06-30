@@ -76,6 +76,16 @@
       </div>
     {/if}
 
+    {#if app.mode === "editor" && app.reviewPanelDismissed}
+      <button
+        type="button"
+        class="review-panel-cta"
+        onclick={() => app.openReviewPanel()}
+      >
+        Show review panel
+      </button>
+    {/if}
+
     {#if reviewStore.trackChanges}
       <span class="track-on">Tracking</span>
     {/if}
@@ -245,6 +255,21 @@
   .goal-wrap {
     width: 120px;
     flex-shrink: 0;
+  }
+
+  .review-panel-cta {
+    color: var(--accent);
+    font-size: 10px;
+    font-weight: 500;
+    padding: 2px 8px;
+    border: 1px solid var(--accent-dim);
+    border-radius: var(--radius-sm);
+    flex-shrink: 0;
+  }
+
+  .review-panel-cta:hover {
+    background: var(--accent-subtle);
+    color: var(--accent-hover);
   }
 
   .track-on {

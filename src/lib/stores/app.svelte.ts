@@ -65,9 +65,6 @@ import type {
   TrackedChange,
 } from "$lib/types";
 
-/** Panel chrome in review mode — mutate properties only (never reassign this object). */
-export const reviewPanelUi = $state({ dismissed: false });
-
 class AppStore {
   screen = $state<AppScreen>("welcome");
   settings = $state<AppSettings>(getAppSettings());
@@ -87,13 +84,14 @@ class AppStore {
   showQuickActions = $state(false);
   showMindMap = $state(false);
   showReadThrough = $state(false);
+  reviewPanelDismissed = $state(false);
   readThroughFinalOnly = $state(true);
 
   get showReviewPanel() {
-    return !reviewPanelUi.dismissed;
+    return !this.reviewPanelDismissed;
   }
   set showReviewPanel(v: boolean) {
-    reviewPanelUi.dismissed = !v;
+    this.reviewPanelDismissed = !v;
   }
   pendingSearchJump = $state<SearchJumpTarget | null>(null);
   libraryReviewTotals = $state<{ openComments: number; pendingChanges: number } | null>(
@@ -713,16 +711,16 @@ class AppStore {
   }
 
   openReviewPanel() {
-    reviewPanelUi.dismissed = false;
+    this.reviewPanelDismissed = false;
   }
 
   toggleReviewPanel() {
-    reviewPanelUi.dismissed = !reviewPanelUi.dismissed;
+    this.reviewPanelDismissed = !this.reviewPanelDismissed;
   }
 
   setMode(mode: AppMode) {
     this.mode = mode;
-    if (mode === "editor") reviewPanelUi.dismissed = false;
+    if (mode === "editor") this.reviewPanelDismissed = false;
     reviewStore.setMode(mode);
   }
 
