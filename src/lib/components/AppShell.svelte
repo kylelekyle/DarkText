@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onDestroy, onMount } from "svelte";
   import type { Editor } from "@tiptap/core";
-  import { app, reviewPanel } from "$lib/stores/app.svelte";
+  import { app, reviewPanelUi } from "$lib/stores/app.svelte";
   import Sidebar from "./Sidebar.svelte";
   import MenuBar from "./MenuBar.svelte";
   import Toolbar from "./Toolbar.svelte";
@@ -30,6 +30,10 @@
   import { libraryStore } from "$lib/stores/library.svelte";
   import type { ChapterSection } from "$lib/types";
   import { clearSidebarSelectionOnOutsideClick } from "$lib/utils/sidebarSelection";
+
+  const showReviewAside = $derived(
+    app.mode === "editor" && !app.focusMode && !reviewPanelUi.dismissed,
+  );
 
   onMount(() => {
     if (app.confirmDialog) app.resolveConfirm(false);
@@ -171,7 +175,10 @@
     <Toolbar editor={app.activeEditorRef} />
   </div>
 
-  <div class="workspace">
+  <div
+    class="workspace"
+    class:review-layout={showReviewAside}
+  >
     <div
       class="sidebar-slot"
       class:hidden={app.focusMode}
@@ -294,7 +301,7 @@
       </div>
     </main>
 
-    {#if app.mode === "editor" && reviewPanel.visible && !app.focusMode}
+    {#if showReviewAside}
       <aside class="review-slot">
         <div class="review-header">
           <span class="review-title">Review</span>
@@ -393,16 +400,23 @@
   }
 
   .workspace {
-    display: flex;
+    display: grid;
     flex: 1;
     min-height: 0;
     overflow: hidden;
+    grid-template-columns: var(--slot-width) minmax(0, 1fr);
+  }
+
+  .workspace.review-layout {
+    grid-template-columns: var(--slot-width) minmax(0, 1fr) 280px;
   }
 
   .sidebar-slot {
-    flex-shrink: 0;
+    grid-column: 1;
+    grid-row: 1;
     overflow: hidden;
     width: var(--slot-width);
+    min-width: 0;
     height: 100%;
     opacity: 1;
     transition: width var(--transition-focus), opacity var(--transition-smooth);
@@ -419,7 +433,8 @@
   }
 
   .editor-area {
-    flex: 1 1 0;
+    grid-column: 2;
+    grid-row: 1;
     display: flex;
     flex-direction: column;
     min-width: 0;
@@ -583,8 +598,10 @@
   }
 
   .review-slot {
-    flex-shrink: 0;
+    grid-column: 3;
+    grid-row: 1;
     width: 280px;
+    min-width: 280px;
     display: flex;
     flex-direction: column;
     background: var(--bg-elevated);

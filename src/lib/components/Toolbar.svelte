@@ -1,6 +1,6 @@
 <script lang="ts">
   import type { Editor } from "@tiptap/core";
-  import { app, reviewPanel } from "$lib/stores/app.svelte";
+  import { app, reviewPanelUi } from "$lib/stores/app.svelte";
   import { fontStore } from "$lib/stores/fonts.svelte";
   import { setParagraphAlignment } from "$lib/editor/align";
   import {
@@ -231,9 +231,9 @@
     <button class="tool-btn" title="Add comment" onclick={cmd(() => app.addCommentOnSelection())}>Comment</button>
     <button
       class="tool-btn"
-      class:active={reviewPanel.visible}
-      title={reviewPanel.visible ? "Hide review panel" : "Show review panel"}
-      onclick={cmd(() => (reviewPanel.visible ? app.toggleReviewPanel() : app.openReviewPanel()))}
+      class:active={!reviewPanelUi.dismissed}
+      title={reviewPanelUi.dismissed ? "Show review panel" : "Hide review panel"}
+      onclick={cmd(() => (reviewPanelUi.dismissed ? app.openReviewPanel() : app.toggleReviewPanel()))}
     >
       Panel
     </button>
