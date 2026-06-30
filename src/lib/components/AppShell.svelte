@@ -25,7 +25,9 @@
   import EditorHandoffDialog from "./dialogs/EditorHandoffDialog.svelte";
   import ChapterSnapshotsDialog from "./dialogs/ChapterSnapshotsDialog.svelte";
   import ConfirmDialog from "./dialogs/ConfirmDialog.svelte";
+  import ReviewPanel from "./ReviewPanel.svelte";
   import { handleGlobalShortcut } from "$lib/shortcuts/registry";
+  import { portal } from "$lib/utils/portal";
   import { reviewStore } from "$lib/stores/review.svelte";
   import { libraryStore } from "$lib/stores/library.svelte";
   import type { ChapterSection } from "$lib/types";
@@ -164,6 +166,9 @@
   class:mode-editor={app.mode === "editor"}
   class:focus-mode={app.focusMode}
   class:show-edits={app.showEditsComments}
+  class:review-panel-open={app.mode === "editor" &&
+    !app.focusMode &&
+    !app.reviewPanelDismissed}
 >
   <MenuBar editor={app.activeEditorRef} />
 
@@ -313,6 +318,28 @@
   {/if}
 </div>
 
+<aside
+  class="review-slot"
+  class:is-open={app.mode === "editor" && !app.focusMode && !app.reviewPanelDismissed}
+  aria-label="Review panel"
+  aria-hidden={!(app.mode === "editor" && !app.focusMode && !app.reviewPanelDismissed)}
+  use:portal
+>
+  <div class="review-header">
+    <span class="review-title">Review</span>
+    <button
+      class="review-close"
+      title="Close review panel"
+      onclick={() => app.toggleReviewPanel()}
+    >
+      ×
+    </button>
+  </div>
+  <div class="review-body">
+    <ReviewPanel />
+  </div>
+</aside>
+
 <QuickActions editor={app.activeEditorRef} />
 
 {#if app.showMindMap}
@@ -359,6 +386,72 @@
     min-height: 0;
     overflow: hidden;
     transition: background var(--transition-smooth);
+  }
+
+  .app-shell.review-panel-open :global(.editor-area) {
+    margin-right: 280px;
+    transition: margin-right var(--transition-smooth);
+  }
+
+  :global(aside.review-slot) {
+    position: fixed;
+    top: calc(var(--titlebar-height) + 36px + 36px);
+    right: 0;
+    bottom: 28px;
+    width: 280px;
+    display: flex;
+    flex-direction: column;
+    background: var(--bg-elevated);
+    border-left: 2px solid var(--accent);
+    box-shadow: -8px 0 32px rgba(0, 0, 0, 0.5);
+    overflow: hidden;
+    z-index: 180;
+    pointer-events: none;
+    visibility: hidden;
+    opacity: 0;
+    transition: opacity 0.18s ease, visibility 0.18s ease;
+  }
+
+  :global(aside.review-slot.is-open) {
+    visibility: visible;
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  :global(aside.review-slot .review-header) {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--border-subtle);
+    flex-shrink: 0;
+  }
+
+  :global(aside.review-slot .review-title) {
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-muted);
+  }
+
+  :global(aside.review-slot .review-close) {
+    font-size: 16px;
+    line-height: 1;
+    color: var(--text-muted);
+    padding: 2px 6px;
+    border-radius: 4px;
+  }
+
+  :global(aside.review-slot .review-close:hover) {
+    color: var(--text-primary);
+    background: var(--bg-hover);
+  }
+
+  :global(aside.review-slot .review-body) {
+    flex: 1;
+    overflow-y: auto;
+    min-height: 0;
   }
 
   .toolbar-slot {

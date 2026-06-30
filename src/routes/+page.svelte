@@ -8,7 +8,7 @@
   import TitleBar from "$lib/components/TitleBar.svelte";
   import WelcomeScreen from "$lib/components/WelcomeScreen.svelte";
   import AppShell from "$lib/components/AppShell.svelte";
-  import ReviewPanelAside from "$lib/components/ReviewPanelAside.svelte";
+
   initWindowCloseHandler();
 
   onMount(() => {
@@ -19,13 +19,7 @@
   });
 </script>
 
-<div
-  class="app-root"
-  class:review-panel-open={app.screen === "workspace" &&
-    app.mode === "editor" &&
-    !app.focusMode &&
-    !app.reviewPanelDismissed}
->
+<div class="app-root">
   <TitleBar />
   {#if app.screen === "welcome"}
     <WelcomeScreen />
@@ -33,8 +27,6 @@
     <AppShell />
   {/if}
 </div>
-
-<ReviewPanelAside />
 
 <style>
   .app-root {
@@ -45,8 +37,5 @@
     background: var(--bg-deep);
   }
 
-  .app-root.review-panel-open :global(.editor-area) {
-    margin-right: 280px;
-    transition: margin-right var(--transition-smooth);
-  }
+
 </style>
