@@ -8,6 +8,7 @@
     fontSizeMarkAtEditor,
   } from "$lib/editor/fontSize";
   import {
+    DEFAULT_FONT_FAMILY,
     FONT_SIZES,
     fontSizeLabel,
     fontSizePtCss,
@@ -26,23 +27,17 @@
   let canUndo = $state(false);
   let canRedo = $state(false);
   /** Font for new typing — stays until the user picks another in the toolbar. */
-  let typingFont = $state(app.settings.defaultFontFamily);
+  let typingFont = $state(DEFAULT_FONT_FAMILY);
   /** Size for new typing — stays until the user picks another in the toolbar. */
   let typingFontSize = $state(resolveFontSize(app.settings.defaultFontSize));
   let toolbarFontSize = $state(resolveFontSize(app.settings.defaultFontSize));
   let isBold = $state(false);
   let isItalic = $state(false);
   let isUnderline = $state(false);
-  let lastDefaultFont = app.settings.defaultFontFamily;
   let lastDefaultFontSize = app.settings.defaultFontSize;
 
   $effect(() => {
-    const family = app.settings.defaultFontFamily;
     const size = app.settings.defaultFontSize;
-    if (family !== lastDefaultFont) {
-      typingFont = family;
-      lastDefaultFont = family;
-    }
     if (size !== lastDefaultFontSize) {
       typingFontSize = resolveFontSize(size);
       lastDefaultFontSize = size;

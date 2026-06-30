@@ -12,7 +12,6 @@ export interface AppSettings {
   openLastOnLaunch: boolean;
   installType: "portable" | "install" | null;
   firstRunComplete: boolean;
-  defaultFontFamily: string;
   defaultFontSize: string;
   spellcheck: boolean;
   defaultCompilePreset: CompilePreset;
@@ -33,7 +32,6 @@ export const defaultAppSettings: AppSettings = {
   openLastOnLaunch: false,
   installType: null,
   firstRunComplete: false,
-  defaultFontFamily: "Calibri, sans-serif",
   defaultFontSize: DEFAULT_FONT_SIZE,
   spellcheck: true,
   defaultCompilePreset: "manuscript",

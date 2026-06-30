@@ -118,7 +118,6 @@ export interface ChapterContent {
 
 export interface LibraryPreferences {
   autoSaveMs?: number;
-  defaultFontFamily?: string;
   defaultFontSize?: string;
   defaultCompilePreset?: CompilePreset;
   defaultCompileFormat?: ExportFormat;

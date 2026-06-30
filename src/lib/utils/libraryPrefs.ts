@@ -7,7 +7,6 @@ export function preferencesFromSettings(
 ): LibraryPreferences {
   return {
     autoSaveMs: settings.autoSaveMs,
-    defaultFontFamily: settings.defaultFontFamily,
     defaultFontSize: settings.defaultFontSize,
     defaultCompilePreset: settings.defaultCompilePreset,
     defaultCompileFormat: settings.defaultCompileFormat,
@@ -24,7 +23,6 @@ export function settingsFromPreferences(
   return {
     ...base,
     autoSaveMs: prefs.autoSaveMs ?? base.autoSaveMs,
-    defaultFontFamily: prefs.defaultFontFamily ?? base.defaultFontFamily,
     defaultFontSize: resolveFontSize(
       prefs.defaultFontSize ?? base.defaultFontSize,
     ),

@@ -10,7 +10,6 @@
   } from "$lib/utils/appSettings";
   import type { CompilePreset, ExportFormat } from "$lib/types";
   import { FONT_SIZES, fontSizeLabel } from "$lib/utils/typography";
-  import FontFamilyPicker from "../FontFamilyPicker.svelte";
 
   type Tab = "general" | "editor" | "compile" | "library";
 
@@ -86,13 +85,6 @@
           <input type="text" bind:value={draft.reviewerDisplayName} placeholder="Editor" />
         </label>
       {:else if tab === "editor"}
-        <label class="font-field">
-          <span>Default font</span>
-          <FontFamilyPicker
-            value={draft.defaultFontFamily}
-            onchange={(v) => (draft.defaultFontFamily = v)}
-          />
-        </label>
         <label>
           <span>Default size</span>
           <select bind:value={draft.defaultFontSize}>
@@ -203,15 +195,6 @@
     letter-spacing: 0.05em;
     color: var(--text-muted);
     margin-bottom: 4px;
-  }
-
-  .font-field :global(.font-picker) {
-    width: 100%;
-    max-width: none;
-  }
-
-  .font-field :global(.trigger) {
-    max-width: none;
   }
 
   select,

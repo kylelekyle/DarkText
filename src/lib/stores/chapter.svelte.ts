@@ -5,7 +5,7 @@ import { countWords, estimatePages, htmlToPlain, statsFromHtml } from "$lib/util
 import { sanitizeHtmlForDisplay } from "$lib/export/sanitizeHtml";
 import { formatError } from "$lib/utils/errors";
 import { defaultAppSettings, type AppSettings } from "$lib/utils/appSettings";
-import { fontSizePtCss } from "$lib/utils/typography";
+import { DEFAULT_FONT_FAMILY, fontSizePtCss } from "$lib/utils/typography";
 import type { ChapterContent, ChapterMeta, ChapterSection } from "$lib/types";
 
 export type ChapterToast = (msg: string) => void;
@@ -140,14 +140,14 @@ export class ChapterStore {
     return html;
   }
 
-  applyEditorStyles(spellcheck: boolean, fontFamily: string, fontSize: string) {
+  applyEditorStyles(spellcheck: boolean, fontSize: string) {
     requestAnimationFrame(() => {
       const el = document.querySelector(
         `[data-editor-pane="${this.pane}"] .chapter-prose`,
       ) as HTMLElement | null;
       if (!el) return;
       el.spellcheck = spellcheck;
-      el.style.fontFamily = fontFamily;
+      el.style.fontFamily = DEFAULT_FONT_FAMILY;
       el.style.fontSize = fontSizePtCss(fontSize);
     });
   }
@@ -190,11 +190,7 @@ export class ChapterStore {
     );
 
     const settings = this.getSettings();
-    this.applyEditorStyles(
-      settings.spellcheck,
-      settings.defaultFontFamily,
-      settings.defaultFontSize,
-    );
+    this.applyEditorStyles(settings.spellcheck, settings.defaultFontSize);
 
     return { gen, content };
   }

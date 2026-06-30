@@ -31,6 +31,9 @@ export function fontOptionLabel(family: string, source: "system" | "custom"): st
 /** Stored settings / toolbar values are plain point numbers (e.g. "12"). */
 export const DEFAULT_FONT_SIZE = "12";
 
+/** The editor's base font. Fixed, not user-configurable. */
+export const DEFAULT_FONT_FAMILY = "Calibri, sans-serif";
+
 /** Editor toolbar / settings sizes in points. */
 export const FONT_SIZES = [
   "6",
