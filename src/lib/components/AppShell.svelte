@@ -31,6 +31,15 @@
   import type { ChapterSection } from "$lib/types";
   import { clearSidebarSelectionOnOutsideClick } from "$lib/utils/sidebarSelection";
 
+  // Bridge app-store fields into local $state so Svelte reliably re-renders the panel.
+  let reviewPanelVisible = $state(false);
+  let inReviewMode = $state(false);
+
+  $effect(() => {
+    reviewPanelVisible = app.showReviewPanel;
+    inReviewMode = app.mode === "editor" && !app.focusMode;
+  });
+
   onMount(() => {
     if (app.confirmDialog) app.resolveConfirm(false);
     app.showQuickActions = false;
@@ -294,8 +303,8 @@
       </div>
     </main>
 
-    {#if app.mode === "editor" && app.showReviewPanel && !app.focusMode}
-      <aside class="review-slot">
+    {#if inReviewMode}
+      <aside class="review-slot" class:collapsed={!reviewPanelVisible}>
         <div class="review-header">
           <span class="review-title">Review</span>
           <button
@@ -587,10 +596,20 @@
     width: 280px;
     display: flex;
     flex-direction: column;
-    background: var(--bg-surface);
-    border-left: 1px solid var(--border-subtle);
+    background: var(--bg-elevated);
+    border-left: 2px solid var(--accent-dim);
     overflow: hidden;
+    z-index: 4;
+    transition: width var(--transition-smooth), opacity var(--transition-smooth),
+      border-color var(--transition-smooth);
     animation: review-in 0.22s var(--ease-focus);
+  }
+
+  .review-slot.collapsed {
+    width: 0;
+    opacity: 0;
+    border-left-width: 0;
+    pointer-events: none;
   }
 
   @keyframes review-in {

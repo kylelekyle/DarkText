@@ -39,7 +39,12 @@
   let isItalic = $state(false);
   let isUnderline = $state(false);
   let isStrike = $state(false);
+  let reviewPanelOpen = $state(app.showReviewPanel);
   let lastDefaultFontSize = app.settings.defaultFontSize;
+
+  $effect(() => {
+    reviewPanelOpen = app.showReviewPanel;
+  });
 
   $effect(() => {
     const size = app.settings.defaultFontSize;
@@ -229,6 +234,14 @@
     ><span class="strike">S</span></button>
     <div class="sep"></div>
     <button class="tool-btn" title="Add comment" onclick={cmd(() => app.addCommentOnSelection())}>Comment</button>
+    <button
+      class="tool-btn"
+      class:active={reviewPanelOpen}
+      title={reviewPanelOpen ? "Hide review panel" : "Show review panel"}
+      onclick={cmd(() => (reviewPanelOpen ? app.toggleReviewPanel() : app.openReviewPanel()))}
+    >
+      Panel
+    </button>
     <div class="sep"></div>
     <button class="tool-btn" title="Undo" onclick={cmd(() => editor?.chain().focus().undo().run())} disabled={!canUndo}>↩</button>
     <button class="tool-btn" title="Redo" onclick={cmd(() => editor?.chain().focus().redo().run())} disabled={!canRedo}>↪</button>
