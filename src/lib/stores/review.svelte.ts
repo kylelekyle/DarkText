@@ -105,6 +105,13 @@ export class ReviewStore {
     this.pendingCommentMarkId = "";
   }
 
+  /** Turn on tracking for review edits without toggling off later. */
+  enableTrackChanges(editor?: Editor | null) {
+    if (this.trackChanges) return;
+    this.trackChanges = true;
+    setTrackChangesEnabled(editor ?? this.getEditor(), true);
+  }
+
   toggleTrackChanges() {
     const editor = this.getEditor();
     if (this.trackChanges && editor) {
@@ -299,7 +306,7 @@ export class ReviewStore {
 
   /** Live panel sync while typing; marks sidecar dirty when change metadata shifts. */
   syncChangesPanelFromEditor(editor?: Editor | null) {
-    if (!this.trackChanges && this.pendingChanges.length === 0 && !this.showReviewPanel) return;
+    if (!this.trackChanges && this.pendingChanges.length === 0) return;
     const ed = editor ?? this.getEditor();
     if (!ed) return;
     const prev = this.chapterComments.changes;
@@ -316,8 +323,7 @@ export class ReviewStore {
     if (
       !opts?.force &&
       !this.trackChanges &&
-      this.pendingChanges.length === 0 &&
-      !this.showReviewPanel
+      this.pendingChanges.length === 0
     ) {
       return;
     }

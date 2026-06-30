@@ -1,14 +1,7 @@
 import type { Editor } from "@tiptap/core";
-import { setTrackChangesEnabled } from "$lib/editor/trackChanges";
 import { reviewStore } from "$lib/stores/review.svelte";
 
 const TRACK_META = "trackChanges";
-
-function ensureReviewTracking(editor: Editor | null): void {
-  if (!editor || reviewStore.trackChanges) return;
-  reviewStore.trackChanges = true;
-  setTrackChangesEnabled(editor, true);
-}
 
 export function toggleBold(editor: Editor | null): void {
   editor?.chain().focus().toggleBold().run();
@@ -43,7 +36,7 @@ export function isDeletionMarkActive(editor: Editor | null): boolean {
 /** Author: plain strikethrough. Review: tracked deletion mark. */
 export function toggleStrikethrough(editor: Editor | null, reviewMode: boolean): void {
   if (reviewMode) {
-    ensureReviewTracking(editor);
+    reviewStore.enableTrackChanges(editor);
     toggleTrackedDeletionMark(editor);
   } else {
     toggleStrike(editor);
@@ -65,7 +58,7 @@ export function toggleTrackedDeletionMark(editor: Editor | null): void {
 
   if (empty) {
     if (!editor.isActive("deletion")) return;
-    editor
+    const ok = editor
       .chain()
       .focus()
       .extendMarkRange("deletion")
@@ -76,12 +69,13 @@ export function toggleTrackedDeletionMark(editor: Editor | null): void {
         return true;
       })
       .run();
+    if (ok) reviewStore.syncChangesPanelFromEditor(editor);
     return;
   }
 
   const removing = selectionTouchesDeletion(editor, from, to);
 
-  editor
+  const ok = editor
     .chain()
     .focus()
     .command(({ tr, dispatch }) => {
@@ -94,6 +88,7 @@ export function toggleTrackedDeletionMark(editor: Editor | null): void {
       return true;
     })
     .run();
+  if (ok) reviewStore.syncChangesPanelFromEditor(editor);
 }
 
 export function undoEditor(editor: Editor | null): void {
