@@ -127,6 +127,10 @@ export class ReviewStore {
     this.showEditsComments = !this.showEditsComments;
   }
 
+  openReviewPanel() {
+    this.showReviewPanel = true;
+  }
+
   toggleReviewPanel() {
     this.showReviewPanel = !this.showReviewPanel;
   }
