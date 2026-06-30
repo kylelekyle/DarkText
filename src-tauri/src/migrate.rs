@@ -73,14 +73,12 @@ pub fn migrate_library_if_needed(library_path: &Path) -> Result<(), String> {
             }
             let file_name = path.file_name().and_then(|n| n.to_str()).unwrap_or("");
 
-            if file_name.ends_with(".meta.json") {
-                let meta = read_meta_file(&path)?;
-                metas_by_id.insert(meta.id.clone(), meta);
-            } else if section == SECTION_CHAPTERS
-                && path.extension().and_then(|e| e.to_str()) == Some("json")
-                && !file_name.ends_with(".meta.json")
-                && !file_name.ends_with(".comments.json")
-            {
+            let is_meta = file_name.ends_with(".meta.json")
+                || (section == SECTION_CHAPTERS
+                    && path.extension().and_then(|e| e.to_str()) == Some("json")
+                    && !file_name.ends_with(".comments.json")
+                    && !file_name.ends_with(".meta.json"));
+            if is_meta {
                 let meta = read_meta_file(&path)?;
                 metas_by_id.insert(meta.id.clone(), meta);
             }
