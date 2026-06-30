@@ -65,6 +65,9 @@ import type {
   TrackedChange,
 } from "$lib/types";
 
+/** Module-level state so panel visibility reliably triggers Svelte re-renders. */
+export const reviewPanel = $state({ visible: false });
+
 class AppStore {
   screen = $state<AppScreen>("welcome");
   settings = $state<AppSettings>(getAppSettings());
@@ -84,8 +87,14 @@ class AppStore {
   showQuickActions = $state(false);
   showMindMap = $state(false);
   showReadThrough = $state(false);
-  showReviewPanel = $state(false);
   readThroughFinalOnly = $state(true);
+
+  get showReviewPanel() {
+    return reviewPanel.visible;
+  }
+  set showReviewPanel(v: boolean) {
+    reviewPanel.visible = v;
+  }
   pendingSearchJump = $state<SearchJumpTarget | null>(null);
   libraryReviewTotals = $state<{ openComments: number; pendingChanges: number } | null>(
     null,
@@ -704,20 +713,16 @@ class AppStore {
   }
 
   openReviewPanel() {
-    this.showReviewPanel = true;
+    reviewPanel.visible = true;
   }
 
   toggleReviewPanel() {
-    this.showReviewPanel = !this.showReviewPanel;
+    reviewPanel.visible = !reviewPanel.visible;
   }
 
   setMode(mode: AppMode) {
     this.mode = mode;
-    if (mode === "editor") {
-      this.showReviewPanel = true;
-    } else {
-      this.showReviewPanel = false;
-    }
+    reviewPanel.visible = mode === "editor";
     reviewStore.setMode(mode);
   }
 

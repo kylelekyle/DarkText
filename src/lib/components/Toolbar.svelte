@@ -1,6 +1,6 @@
 <script lang="ts">
   import type { Editor } from "@tiptap/core";
-  import { app } from "$lib/stores/app.svelte";
+  import { app, reviewPanel } from "$lib/stores/app.svelte";
   import { fontStore } from "$lib/stores/fonts.svelte";
   import { setParagraphAlignment } from "$lib/editor/align";
   import {
@@ -39,12 +39,7 @@
   let isItalic = $state(false);
   let isUnderline = $state(false);
   let isStrike = $state(false);
-  let reviewPanelOpen = $state(app.showReviewPanel);
   let lastDefaultFontSize = app.settings.defaultFontSize;
-
-  $effect(() => {
-    reviewPanelOpen = app.showReviewPanel;
-  });
 
   $effect(() => {
     const size = app.settings.defaultFontSize;
@@ -236,9 +231,9 @@
     <button class="tool-btn" title="Add comment" onclick={cmd(() => app.addCommentOnSelection())}>Comment</button>
     <button
       class="tool-btn"
-      class:active={reviewPanelOpen}
-      title={reviewPanelOpen ? "Hide review panel" : "Show review panel"}
-      onclick={cmd(() => (reviewPanelOpen ? app.toggleReviewPanel() : app.openReviewPanel()))}
+      class:active={reviewPanel.visible}
+      title={reviewPanel.visible ? "Hide review panel" : "Show review panel"}
+      onclick={cmd(() => (reviewPanel.visible ? app.toggleReviewPanel() : app.openReviewPanel()))}
     >
       Panel
     </button>
