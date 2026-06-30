@@ -272,6 +272,15 @@ describe("TrackChangesPlugin", () => {
     expect(html).not.toMatch(/dt-deletion[^>]*>X</);
   });
 
+  it("leaves undo to history without re-tracking", () => {
+    const editor = track("<p>Hi</p>");
+    editor.chain().focus("end").insertContent(" there").run();
+    expect(editor.getHTML()).toContain("dt-insertion");
+    editor.chain().focus().undo().run();
+    expect(editor.getHTML()).not.toContain("dt-insertion");
+    expect(editorPlainText(editor)).toBe("Hi");
+  });
+
   it("re-enabling tracking preserves existing marks and tracks new edits", () => {
     const editor = track("<p>Start</p>", false);
     editor.chain().focus("end").insertContent(" one").run();

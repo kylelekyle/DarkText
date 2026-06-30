@@ -18,12 +18,10 @@ export function htmlToInlinePasteText(html: string): string {
   return collapsePasteText(doc.body.textContent ?? "");
 }
 
-/** True when the caret sits in body prose (paste should not split the paragraph). */
-export function shouldPasteInline(view: EditorView): boolean {
+/** Only force inline paste when the caret is inside a comment span. */
+export function cursorInComment(view: EditorView): boolean {
   const { $from } = view.state.selection;
-  if (!$from.parent.isTextblock) return false;
-  const name = $from.parent.type.name;
-  return name === "paragraph" || name === "heading";
+  return $from.marks().some((m) => m.type.name === "comment");
 }
 
 /** Insert pasted characters inline — never creates new block nodes. */

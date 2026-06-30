@@ -17,9 +17,9 @@ import { createLibraryImageExtension } from "$lib/editor/libraryImage";
 import { handleEditorMousedown } from "$lib/editor/focus";
 import { prepareHtmlForPaste } from "$lib/export/sanitizeHtml";
 import {
+  cursorInComment,
   htmlToInlinePasteText,
   insertInlinePaste,
-  shouldPasteInline,
 } from "$lib/editor/paste";
 
 export interface SpellContextMenuState {
@@ -84,16 +84,11 @@ export function buildChapterEditorProps(
       const html = clipboard.getData("text/html")?.trim();
       const plain = clipboard.getData("text/plain") ?? "";
 
-      if (shouldPasteInline(view)) {
+      // Inside a comment, never insert block nodes (keeps the paragraph intact).
+      if (cursorInComment(view) && (html || plain)) {
         event.preventDefault();
-        if (html) {
-          const { html: safe, blockedImages } = prepareHtmlForPaste(html);
-          if (blockedImages) handlers.notifyBlockedImagePaste();
-          const text = htmlToInlinePasteText(safe || html);
-          if (text) insertInlinePaste(getEd(), text);
-        } else if (plain) {
-          insertInlinePaste(getEd(), plain);
-        }
+        const text = html ? htmlToInlinePasteText(prepareHtmlForPaste(html).html || html) : plain;
+        if (text) insertInlinePaste(getEd(), text);
         return true;
       }
 

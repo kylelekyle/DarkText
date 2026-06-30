@@ -44,6 +44,9 @@
   let mountedRevision = $state(-1);
   let contextMenu = $state<SpellContextMenuState | null>(null);
   let contextMenuGen = 0;
+  let contextCanUndo = $state(false);
+  let contextCanRedo = $state(false);
+  let onTransactionHandler: (() => void) | null = null;
 
   const contextHandlers = {
     nextGen: () => ++contextMenuGen,
@@ -76,6 +79,13 @@
     });
 
     element.addEventListener("mousedown", onMountPaddingMousedown);
+    onTransactionHandler = () => {
+      if (ed.isDestroyed) return;
+      contextCanUndo = ed.can().undo();
+      contextCanRedo = ed.can().redo();
+      if (pane === "primary") reviewStore.syncCommentMarksFromEditor(ed);
+    };
+    ed.on("transaction", onTransactionHandler);
     editor = ed;
     if (spellcheck) deferHeavyWork(() => prewarmSpellcheck());
     onEditorReady?.(ed);
@@ -137,6 +147,7 @@
     editor = null;
     onEditorReady?.(null);
     if (ed && !ed.isDestroyed) {
+      if (onTransactionHandler) ed.off("transaction", onTransactionHandler);
       deferHeavyWork(() => {
         if (!ed.isDestroyed) ed.destroy();
       });
@@ -181,6 +192,8 @@
     x={contextMenu.x}
     y={contextMenu.y}
     {editor}
+    canUndo={contextCanUndo}
+    canRedo={contextCanRedo}
     spellWord={contextMenu.spellWord}
     spellFrom={contextMenu.spellFrom}
     spellTo={contextMenu.spellTo}

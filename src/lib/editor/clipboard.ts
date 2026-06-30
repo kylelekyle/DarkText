@@ -1,5 +1,4 @@
 import type { Editor } from "@tiptap/core";
-import { insertInlinePaste } from "$lib/editor/paste";
 
 async function writeClipboardText(text: string): Promise<boolean> {
   try {
@@ -39,5 +38,7 @@ export async function copySelection(editor: Editor | null): Promise<void> {
 export async function pasteIntoEditor(editor: Editor | null): Promise<void> {
   if (!editor) return;
   const text = await readClipboardText();
-  if (text !== null) insertInlinePaste(editor, text);
+  if (text !== null) {
+    editor.chain().focus().insertContent(text).run();
+  }
 }

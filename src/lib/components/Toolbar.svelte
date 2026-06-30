@@ -34,6 +34,7 @@
   let isBold = $state(false);
   let isItalic = $state(false);
   let isUnderline = $state(false);
+  let isStrike = $state(false);
   let lastDefaultFontSize = app.settings.defaultFontSize;
 
   $effect(() => {
@@ -63,6 +64,7 @@
       isBold = false;
       isItalic = false;
       isUnderline = false;
+      isStrike = false;
       return;
     }
     const syncToolbar = () => {
@@ -72,6 +74,7 @@
       isBold = editor.isActive("bold");
       isItalic = editor.isActive("italic");
       isUnderline = editor.isActive("underline");
+      isStrike = editor.isActive("strike");
       toolbarFontSize = fontSizeMarkAtEditor(editor) ?? typingFontSize;
     };
     const onSelectionUpdate = () => {
@@ -163,6 +166,15 @@
     >
       <span class="underline">U</span>
     </button>
+    <button
+      class="tool-btn"
+      class:active={isStrike}
+      title="Strikethrough"
+      aria-pressed={isStrike}
+      onclick={cmd(() => editor?.chain().focus().toggleStrike().run())}
+    >
+      <span class="strike">S</span>
+    </button>
 
     <div class="sep"></div>
 
@@ -186,6 +198,31 @@
     <button class="tool-btn" title="Redo" onclick={cmd(() => editor?.chain().focus().redo().run())} disabled={!canRedo}>↪</button>
   {:else}
     <span class="mode-label">Review Mode — track changes &amp; comments</span>
+    <button
+      class="tool-btn"
+      class:active={isBold}
+      title="Bold"
+      onclick={cmd(() => editor?.chain().focus().toggleBold().run())}
+    ><strong>B</strong></button>
+    <button
+      class="tool-btn"
+      class:active={isItalic}
+      title="Italic"
+      onclick={cmd(() => editor?.chain().focus().toggleItalic().run())}
+    ><em>I</em></button>
+    <button
+      class="tool-btn"
+      class:active={isUnderline}
+      title="Underline"
+      onclick={cmd(() => editor?.chain().focus().toggleUnderline().run())}
+    ><span class="underline">U</span></button>
+    <button
+      class="tool-btn"
+      class:active={isStrike}
+      title="Strikethrough"
+      onclick={cmd(() => editor?.chain().focus().toggleStrike().run())}
+    ><span class="strike">S</span></button>
+    <div class="sep"></div>
     <button class="tool-btn" title="Add comment" onclick={cmd(() => app.addCommentOnSelection())}>Comment</button>
     <div class="sep"></div>
     <button class="tool-btn" title="Undo" onclick={cmd(() => editor?.chain().focus().undo().run())} disabled={!canUndo}>↩</button>
@@ -273,6 +310,10 @@
 
   .underline {
     text-decoration: underline;
+  }
+
+  .strike {
+    text-decoration: line-through;
   }
 
   .comment-btn {

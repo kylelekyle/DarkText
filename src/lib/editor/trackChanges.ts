@@ -3,6 +3,7 @@ import { Extension } from "@tiptap/core";
 import { Fragment, type MarkType, type Node as PMNode, type Slice } from "@tiptap/pm/model";
 import { Plugin, PluginKey, TextSelection, type Transaction } from "@tiptap/pm/state";
 import { ReplaceStep } from "@tiptap/pm/transform";
+import { isHistoryTransaction } from "prosemirror-history";
 
 const TRACK_META = "trackChanges";
 const trackStateByEditor = new WeakMap<Editor, boolean>();
@@ -173,6 +174,7 @@ export const TrackChangesPlugin = Extension.create({
         appendTransaction(transactions, oldState, newState) {
           if (!isTrackChangesEnabled(editor)) return null;
           if (transactions.some((t) => t.getMeta(TRACK_META))) return null;
+          if (transactions.some((t) => isHistoryTransaction(t))) return null;
           if (!transactions.some((t) => t.docChanged)) return null;
 
           let tr = newState.tr;

@@ -1,12 +1,22 @@
 <script lang="ts">
   import type { Editor } from "@tiptap/core";
   import { copySelection, cutSelection, pasteIntoEditor } from "$lib/editor/clipboard";
+  import {
+    redoEditor,
+    toggleBold,
+    toggleItalic,
+    toggleStrike,
+    toggleUnderline,
+    undoEditor,
+  } from "$lib/editor/formatActions";
   import { applySpellSuggestion } from "$lib/utils/spellcheck";
 
   interface Props {
     x: number;
     y: number;
     editor: Editor | null;
+    canUndo?: boolean;
+    canRedo?: boolean;
     spellWord?: string;
     spellFrom?: number;
     spellTo?: number;
@@ -19,6 +29,8 @@
     x,
     y,
     editor,
+    canUndo = false,
+    canRedo = false,
     spellWord,
     spellFrom,
     spellTo,
@@ -83,11 +95,15 @@
     <div class="sep" role="separator"></div>
   {/if}
 
-  <button type="button" role="menuitem" onclick={() => run(() => editor?.chain().focus().toggleBold().run())}>Bold</button>
-  <button type="button" role="menuitem" onclick={() => run(() => editor?.chain().focus().toggleItalic().run())}>Italic</button>
-  <button type="button" role="menuitem" onclick={() => run(() => editor?.chain().focus().toggleUnderline().run())}>Underline</button>
+  <button type="button" role="menuitem" onclick={() => run(() => toggleBold(editor))}>Bold</button>
+  <button type="button" role="menuitem" onclick={() => run(() => toggleItalic(editor))}>Italic</button>
+  <button type="button" role="menuitem" onclick={() => run(() => toggleUnderline(editor))}>Underline</button>
+  <button type="button" role="menuitem" onclick={() => run(() => toggleStrike(editor))}>Strikethrough</button>
   <div class="sep" role="separator"></div>
   <button type="button" role="menuitem" onclick={() => run(() => onAddComment?.())}>Add Comment</button>
+  <div class="sep" role="separator"></div>
+  <button type="button" role="menuitem" disabled={!canUndo} onclick={() => run(() => undoEditor(editor))}>Undo</button>
+  <button type="button" role="menuitem" disabled={!canRedo} onclick={() => run(() => redoEditor(editor))}>Redo</button>
   <div class="sep" role="separator"></div>
   <button type="button" role="menuitem" onclick={() => run(() => void cutSelection(editor))}>Cut</button>
   <button type="button" role="menuitem" onclick={() => run(() => void copySelection(editor))}>Copy</button>
@@ -154,8 +170,13 @@
     border-radius: 4px;
   }
 
-  .context-menu button:hover {
+  .context-menu button:hover:not(:disabled) {
     background: var(--bg-hover);
+  }
+
+  .context-menu button:disabled {
+    opacity: 0.35;
+    cursor: default;
   }
 
   .sep {
