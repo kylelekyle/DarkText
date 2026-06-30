@@ -159,19 +159,36 @@ export class ReviewStore {
     this.pendingCommentAnchor = "";
   }
 
-  addCommentOnSelection() {
+  addCommentOnSelection(selectionFrom?: number, selectionTo?: number) {
     const editor = this.getEditor();
     if (!editor) return;
-    const { empty, from, to } = editor.state.selection;
-    if (empty) {
+    const sel = editor.state.selection;
+    const from = selectionFrom ?? sel.from;
+    const to = selectionTo ?? sel.to;
+    if (from >= to) {
       this.toast("Select text to comment");
       return;
     }
-    const anchor = editor.state.doc.textBetween(from, to);
+    const docSize = editor.state.doc.content.size;
+    if (from < 0 || to > docSize) {
+      this.toast("Select text to comment");
+      return;
+    }
+    const anchor = editor.state.doc.textBetween(from, to, " ", " ");
     const markId = crypto.randomUUID();
-    editor.chain().focus().setMark("comment", { markId }).run();
+    const ok = editor
+      .chain()
+      .focus()
+      .setTextSelection({ from, to })
+      .setMark("comment", { markId })
+      .run();
+    if (!ok) {
+      this.toast("Could not add comment");
+      return;
+    }
     this.pendingCommentAnchor = anchor;
     this.pendingCommentMarkId = markId;
+    this.syncCommentMarksFromEditor(editor);
     return markId;
   }
 
@@ -510,12 +527,12 @@ export class ReviewStore {
       );
       if (!chapterStore.isOpenGeneration(gen)) return false;
       this.chapterComments = comments;
+      const changes = syncChangesFromHtml(
+        chapterStore.activeChapterHtml,
+        comments.changes,
+      );
+      this.chapterComments = { ...this.chapterComments, changes };
       this.syncCommentMarksFromEditor();
-      const editor = this.getEditor();
-      if (editor) {
-        const changes = syncChangesFromEditor(editor, comments.changes);
-        this.chapterComments = { ...this.chapterComments, changes };
-      }
       return true;
     } catch (e) {
       if (chapterStore.isOpenGeneration(gen)) {

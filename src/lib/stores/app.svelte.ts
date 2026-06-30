@@ -374,8 +374,8 @@ class AppStore {
     if (enabling) this.splitViewEnabled = true;
   }
 
-  addCommentOnSelection() {
-    const markId = reviewStore.addCommentOnSelection();
+  addCommentOnSelection(selectionFrom?: number, selectionTo?: number) {
+    const markId = reviewStore.addCommentOnSelection(selectionFrom, selectionTo);
     if (markId) this.openDialog("addComment");
   }
 

@@ -132,8 +132,16 @@ export class ChapterStore {
   }
 
   private capturePendingHtml(): string | null {
+    const chapterId = this.activeChapterId;
+    const section = this.activeSection;
     const editor = this.getEditor();
     if (!editor || editor.isDestroyed) return this.pendingHtml;
+    if (
+      this.activeChapterId !== chapterId ||
+      this.activeSection !== section
+    ) {
+      return this.pendingHtml;
+    }
     const html = editor.getHTML();
     this.pendingHtml = html;
     this.onHtmlChange(html);
@@ -224,16 +232,18 @@ export class ChapterStore {
   }
 
   scheduleAutoSave(editor: Editor) {
+    const chapterId = this.activeChapterId;
+    const section = this.activeSection;
+    if (!chapterId) return;
+
     this.saveStatus = "unsaved";
 
     if (this.statsTimer) clearTimeout(this.statsTimer);
-    const statsChapterId = this.activeChapterId;
-    const statsSection = this.activeSection;
     this.statsTimer = setTimeout(() => {
       this.statsTimer = null;
       if (
-        this.activeChapterId !== statsChapterId ||
-        this.activeSection !== statsSection
+        this.activeChapterId !== chapterId ||
+        this.activeSection !== section
       ) {
         return;
       }
@@ -241,8 +251,8 @@ export class ChapterStore {
       this.wordCount = stats.words;
       this.charCount = stats.chars;
       libraryStore.patchActiveChapterStats(
-        statsChapterId,
-        statsSection,
+        chapterId,
+        section,
         this.wordCount,
         this.charCount,
       );
@@ -250,6 +260,12 @@ export class ChapterStore {
 
     if (this.saveTimer) clearTimeout(this.saveTimer);
     this.saveTimer = setTimeout(() => {
+      if (
+        this.activeChapterId !== chapterId ||
+        this.activeSection !== section
+      ) {
+        return;
+      }
       void this.flushSave();
     }, this.getSettings().autoSaveMs);
   }
@@ -285,6 +301,7 @@ export class ChapterStore {
 
     const meta = this.activeChapterMeta;
     const section = this.activeSection;
+    const chapterId = this.activeChapterId;
     const path = libraryStore.library.path;
 
     this.saveInFlight = true;
@@ -293,7 +310,12 @@ export class ChapterStore {
     let ok = false;
     try {
       const updated = await api.saveChapter(path, meta, html, section);
-      if (gen !== this.saveGen || html !== this.pendingHtml) {
+      if (
+        gen !== this.saveGen ||
+        html !== this.pendingHtml ||
+        this.activeChapterId !== chapterId ||
+        this.activeSection !== section
+      ) {
         this.saveStatus = "unsaved";
         ok = false;
       } else {

@@ -55,4 +55,14 @@ describe("replaceOneInDocument", () => {
     expect(editor.getText()).toContain("baz bar foo");
     editor.destroy();
   });
+
+  it("replaces entire paragraph text including shared-prefix matches", () => {
+    const editor = editorWith("hello world");
+    const match = findInDocument(editor, "hello world");
+    expect(match).toEqual({ from: 1, to: 12 });
+    const replaced = replaceOneInDocument(editor, "hello world", "hi");
+    expect(replaced).toBe(true);
+    expect(editor.getText().trim()).toBe("hi");
+    editor.destroy();
+  });
 });

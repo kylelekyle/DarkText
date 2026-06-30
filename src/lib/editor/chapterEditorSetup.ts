@@ -24,6 +24,9 @@ export interface SpellContextMenuState {
   spellFrom?: number;
   spellTo?: number;
   spellSuggestions?: string[];
+  /** Selection captured when the menu opened (right-click clears editor focus). */
+  selectionFrom?: number;
+  selectionTo?: number;
 }
 
 export function buildChapterExtensions(libraryPath: string | null) {
@@ -95,7 +98,13 @@ export function buildChapterEditorProps(
         event.preventDefault();
         const ev = event as MouseEvent;
         const gen = handlers.nextGen();
-        const base = { x: ev.clientX, y: ev.clientY };
+        const { from, to, empty } = getEd().state.selection;
+        const base = {
+          x: ev.clientX,
+          y: ev.clientY,
+          selectionFrom: empty ? undefined : from,
+          selectionTo: empty ? undefined : to,
+        };
         handlers.setContextMenu(base);
         if (spellcheckOn) {
           const wordInfo = getWordAtEditorPoint(getEd(), ev.clientX, ev.clientY);

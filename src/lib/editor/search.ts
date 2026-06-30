@@ -83,8 +83,11 @@ export function replaceOneInDocument(
   editor
     .chain()
     .focus()
-    .setTextSelection({ from: match.from, to: match.to })
-    .insertContent(replacement)
+    .command(({ tr, state, dispatch }) => {
+      tr.replaceWith(match.from, match.to, state.schema.text(replacement));
+      if (dispatch) dispatch(tr);
+      return true;
+    })
     .run();
   return true;
 }
@@ -107,8 +110,11 @@ export function replaceAllInDocument(
     editor
       .chain()
       .focus()
-      .setTextSelection({ from, to })
-      .insertContent(replacement)
+      .command(({ tr, state, dispatch }) => {
+        tr.replaceWith(from, to, state.schema.text(replacement));
+        if (dispatch) dispatch(tr);
+        return true;
+      })
       .run();
   }
   return matches.length;

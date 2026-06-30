@@ -100,7 +100,7 @@
     mountedChapterId = chapterId;
     mountedRevision = editorRevision;
     if (pane === "primary") {
-      reviewStore.syncCommentMarksFromEditor(editor);
+      reviewStore.attachEditor(editor);
     }
     // Only jump to end when switching chapters — not after accept/reject revision bumps.
     if (chapterChanged && chapterId && pane === "primary") {
@@ -184,7 +184,10 @@
     spellTo={contextMenu.spellTo}
     spellSuggestions={contextMenu.spellSuggestions}
     onAddComment={() => {
-      app.addCommentOnSelection();
+      app.addCommentOnSelection(
+        contextMenu?.selectionFrom,
+        contextMenu?.selectionTo,
+      );
       closeContextMenu();
     }}
     onClose={closeContextMenu}

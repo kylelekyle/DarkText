@@ -244,6 +244,34 @@ describe("TrackChangesPlugin", () => {
     expect(countSubstring(editorPlainText(editor), "world")).toBe(1);
   });
 
+  it("tracks full-paragraph replace as one deletion and one insertion", () => {
+    const editor = track("<p>hello world</p>");
+    const ok = replaceOneInDocument(editor, "hello world", "hi", 0);
+    expect(ok).toBe(true);
+    const html = editor.getHTML();
+    expect(html).toContain("dt-deletion");
+    expect(html).toContain("dt-insertion");
+    expect(editorPlainText(editor)).toContain("hello world");
+    // Replacement text must appear outside deletion marks (Word-style).
+    expect(html).toMatch(/dt-insertion[^>]*>hi</);
+    expect(countSubstring(html, "dt-deletion")).toBe(1);
+  });
+
+  it("does not strike through text typed over a deletion region", () => {
+    const editor = track("<p>hello world</p>");
+    expect(selectText(editor, "world")).toBe(true);
+    editor.chain().focus().deleteSelection().run();
+    const strikeFrom = editor.state.selection.from;
+    editor.chain().focus().insertContentAt(strikeFrom, "X").run();
+    const html = editor.getHTML();
+    expect(html).toContain("dt-insertion");
+    const insOnly = html.match(
+      /dt-insertion[^>]*>X</,
+    );
+    expect(insOnly).toBeTruthy();
+    expect(html).not.toMatch(/dt-deletion[^>]*>X</);
+  });
+
   it("re-enabling tracking preserves existing marks and tracks new edits", () => {
     const editor = track("<p>Start</p>", false);
     editor.chain().focus("end").insertContent(" one").run();
