@@ -28,9 +28,16 @@
     "book.compile.epub",
   ]);
 
+  /** Honor environment separation: hide the other role's tools from the palette. */
+  function inEnvironment(group: string | undefined): boolean {
+    if (app.mode === "author") return group !== "Review";
+    return group !== "Format" && group !== "Insert";
+  }
+
   const filtered = $derived(
     actions.filter((a) => {
       if (PALETTE_SKIP.has(a.id)) return false;
+      if (!inEnvironment(a.group)) return false;
       const q = query.trim().toLowerCase();
       if (!q) return true;
       return (

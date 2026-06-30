@@ -84,6 +84,13 @@ describe("syncChangesFromHtml", () => {
     const changes = syncChangesFromHtml(html, existing);
     expect(changes[0].status).toBe("accepted");
   });
+
+  it("captures the reviewer name from data-author", () => {
+    const html =
+      '<p><span class="dt-insertion" data-change-id="a-1" data-author="Editor">hi</span></p>';
+    const changes = syncChangesFromHtml(html, []);
+    expect(changes[0].author).toBe("Editor");
+  });
 });
 
 describe("applyChangeInEditor", () => {

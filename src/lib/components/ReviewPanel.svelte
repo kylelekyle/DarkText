@@ -1,7 +1,13 @@
 <script lang="ts">
   import { app } from "$lib/stores/app.svelte";
+  import { reviewStore } from "$lib/stores/review.svelte";
 
   let replyText = $state<Record<string, string>>({});
+
+  /** In All/Simple markup, comments float in the margin balloons instead. */
+  const commentsInMargin = $derived(
+    app.effectiveMarkupMode === "all" || app.effectiveMarkupMode === "simple",
+  );
 
   function formatTime(iso: string) {
     return new Date(iso).toLocaleString(undefined, {
@@ -14,15 +20,33 @@
 </script>
 
 <div class="review-panel">
+  <div class="summary">
+    <span class="summary-counts">
+      <span class="ins">+{reviewStore.reviewSummary.insertions}</span>
+      <span class="del">−{reviewStore.reviewSummary.deletions}</span>
+      <span class="cmt">◆{reviewStore.reviewSummary.comments}</span>
+    </span>
+    <span class="summary-nav">
+      <button class="small" title="Previous change or comment" onclick={() => app.goToPrevItem()}>◀</button>
+      <button class="small" title="Next change or comment" onclick={() => app.goToNextItem()}>▶</button>
+    </span>
+  </div>
+
   <section class="block">
     <div class="block-head">
-      <span>Comments ({app.activeThreads.length})</span>
+      <span>Comments ({reviewStore.activeThreads.length})</span>
     </div>
-    {#if app.activeThreads.length === 0}
+    {#if commentsInMargin}
+      {#if reviewStore.activeThreads.length === 0}
+        <p class="empty">No comments. Select text → Review → Add comment…</p>
+      {:else}
+        <p class="empty">Shown in the margin. Switch to No Markup to list them here.</p>
+      {/if}
+    {:else if reviewStore.activeThreads.length === 0}
       <p class="empty">No comments. Select text → Review → Add comment…</p>
     {:else}
       <ul class="thread-list">
-        {#each app.activeThreads as thread (thread.id)}
+        {#each reviewStore.activeThreads as thread (thread.id)}
           <li class="thread">
             <button
               type="button"
@@ -61,21 +85,21 @@
 
   <section class="block">
     <div class="block-head">
-      <span>Changes ({app.pendingChanges.length})</span>
-      {#if app.pendingChanges.length > 0}
+      <span>Changes ({reviewStore.pendingChanges.length})</span>
+      {#if reviewStore.pendingChanges.length > 0}
         <div class="bulk">
           <button class="small accept" onclick={() => app.acceptAllChanges()}>Accept all</button>
           <button class="small reject" onclick={() => app.rejectAllChanges()}>Reject all</button>
         </div>
       {/if}
     </div>
-    {#if !app.trackChanges && app.pendingChanges.length === 0}
+    {#if !reviewStore.trackChanges && reviewStore.pendingChanges.length === 0}
       <p class="empty">Enable Track changes in Review menu to start.</p>
-    {:else if app.pendingChanges.length === 0}
+    {:else if reviewStore.pendingChanges.length === 0}
       <p class="empty">No pending changes.</p>
     {:else}
       <ul class="change-list">
-        {#each app.pendingChanges as change (change.markId)}
+        {#each reviewStore.pendingChanges as change (change.markId)}
           <li class="change" class:insertion={change.type === "insertion"} class:deletion={change.type === "deletion"}>
             <span class="type">{change.type === "insertion" ? "+" : "−"}</span>
             <button
@@ -100,6 +124,39 @@
 <style>
   .review-panel {
     padding: 4px 0;
+  }
+
+  .summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 6px 12px 8px;
+    border-bottom: 1px solid var(--border-subtle);
+    margin-bottom: 6px;
+  }
+
+  .summary-counts {
+    display: flex;
+    gap: 8px;
+    font-size: 11px;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .summary-counts .ins {
+    color: var(--status-final);
+  }
+
+  .summary-counts .del {
+    color: var(--danger);
+  }
+
+  .summary-counts .cmt {
+    color: var(--status-refine);
+  }
+
+  .summary-nav {
+    display: flex;
+    gap: 2px;
   }
 
   .block {

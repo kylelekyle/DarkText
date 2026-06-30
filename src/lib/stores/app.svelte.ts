@@ -60,6 +60,7 @@ import type {
   ExportFormat,
   LibraryManifest,
   LibrarySearchHit,
+  MarkupMode,
   SearchJumpTarget,
   SidebarTab,
   TrackedChange,
@@ -84,7 +85,15 @@ class AppStore {
   showQuickActions = $state(false);
   showMindMap = $state(false);
   showReadThrough = $state(false);
+  reviewPanelDismissed = $state(false);
   readThroughFinalOnly = $state(true);
+
+  get showReviewPanel() {
+    return !this.reviewPanelDismissed;
+  }
+  set showReviewPanel(v: boolean) {
+    this.reviewPanelDismissed = !v;
+  }
   pendingSearchJump = $state<SearchJumpTarget | null>(null);
   libraryReviewTotals = $state<{ openComments: number; pendingChanges: number } | null>(
     null,
@@ -231,11 +240,11 @@ class AppStore {
   get showEditsComments() {
     return reviewStore.showEditsComments;
   }
-  get showReviewPanel() {
-    return reviewStore.showReviewPanel;
+  get markupMode() {
+    return reviewStore.markupMode;
   }
-  set showReviewPanel(v: boolean) {
-    reviewStore.showReviewPanel = v;
+  get effectiveMarkupMode() {
+    return reviewStore.effectiveMarkupMode;
   }
   get pendingCommentAnchor() {
     return reviewStore.pendingCommentAnchor;
@@ -332,7 +341,10 @@ class AppStore {
 
   setEditor(editor: Editor | null) {
     this.editorRef = editor;
-    if (editor) this.scheduleSearchJumpApply();
+    if (editor) {
+      reviewStore.attachEditor(editor);
+      this.scheduleSearchJumpApply();
+    }
   }
 
   setSplitEditor(editor: Editor | null) {
@@ -371,8 +383,8 @@ class AppStore {
     if (enabling) this.splitViewEnabled = true;
   }
 
-  addCommentOnSelection() {
-    const markId = reviewStore.addCommentOnSelection();
+  addCommentOnSelection(selectionFrom?: number, selectionTo?: number) {
+    const markId = reviewStore.addCommentOnSelection(selectionFrom, selectionTo);
     if (markId) this.openDialog("addComment");
   }
 
@@ -412,6 +424,22 @@ class AppStore {
     reviewStore.rejectAllChanges();
   }
 
+  get reviewSummary() {
+    return reviewStore.reviewSummary;
+  }
+
+  goToNextItem() {
+    reviewStore.goToNextItem();
+  }
+
+  goToPrevItem() {
+    reviewStore.goToPrevItem();
+  }
+
+  acceptAndAdvance(action: "accept" | "reject") {
+    reviewStore.acceptAndAdvance(action);
+  }
+
   scrollToComment(markId: string) {
     reviewStore.scrollToComment(markId);
   }
@@ -426,6 +454,10 @@ class AppStore {
 
   toggleShowEdits() {
     reviewStore.toggleShowEdits();
+  }
+
+  setMarkupMode(mode: MarkupMode) {
+    reviewStore.setMarkupMode(mode);
   }
 
   async loadBookSettings() {
@@ -705,13 +737,31 @@ class AppStore {
     await libraryStore.refreshCharacters();
   }
 
+  syncReviewPanelDom() {
+    requestAnimationFrame(() => {
+      const el = document.querySelector("aside.review-slot");
+      if (!el) return;
+      const open =
+        this.mode === "editor" && !this.focusMode && !this.reviewPanelDismissed;
+      el.classList.toggle("is-open", open);
+    });
+  }
+
+  openReviewPanel() {
+    this.reviewPanelDismissed = false;
+    this.syncReviewPanelDom();
+  }
+
   toggleReviewPanel() {
-    reviewStore.toggleReviewPanel();
+    this.reviewPanelDismissed = !this.reviewPanelDismissed;
+    this.syncReviewPanelDom();
   }
 
   setMode(mode: AppMode) {
     this.mode = mode;
+    if (mode === "editor") this.reviewPanelDismissed = false;
     reviewStore.setMode(mode);
+    this.syncReviewPanelDom();
   }
 
   toggleFocusMode() {
@@ -725,6 +775,7 @@ class AppStore {
       this.focusMode = false;
       this.sidebarCollapsed = this.sidebarBeforeFocus;
     }
+    this.syncReviewPanelDom();
   }
 
   toggleMindMap() {

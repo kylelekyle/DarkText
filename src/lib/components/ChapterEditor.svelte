@@ -10,9 +10,11 @@
   import { libraryStore } from "$lib/stores/library.svelte";
   import { reviewStore } from "$lib/stores/review.svelte";
   import { focusEditorAtEnd } from "$lib/editor/focus";
+  import { prewarmSpellcheck } from "$lib/utils/spellcheck";
   import { app } from "$lib/stores/app.svelte";
   import type { EditorPane } from "$lib/stores/chapter.svelte";
   import ContextMenu from "./ContextMenu.svelte";
+  import CommentBalloons from "./CommentBalloons.svelte";
 
 
   interface Props {
@@ -38,11 +40,25 @@
   // Assigned via bind:this below; the linter can't see that Svelte binding as an assignment.
   // oxlint-disable-next-line no-unassigned-vars
   let element: HTMLDivElement;
+  let scrollerEl = $state<HTMLElement | null>(null);
   let editor = $state<Editor | null>(null);
   let mountedChapterId = $state<string | null>(null);
   let mountedRevision = $state(-1);
   let contextMenu = $state<SpellContextMenuState | null>(null);
   let contextMenuGen = 0;
+  let contextCanUndo = $state(false);
+  let contextCanRedo = $state(false);
+  let onTransactionHandler: (() => void) | null = null;
+
+  // Comment balloons live in the primary pane (review store tracks that editor).
+  const balloonsActive = $derived(
+    pane === "primary" &&
+      app.mode === "editor" &&
+      !app.focusMode &&
+      (app.effectiveMarkupMode === "all" ||
+        app.effectiveMarkupMode === "simple") &&
+      reviewStore.activeThreads.length > 0,
+  );
 
   const contextHandlers = {
     nextGen: () => ++contextMenuGen,
@@ -75,7 +91,15 @@
     });
 
     element.addEventListener("mousedown", onMountPaddingMousedown);
+    onTransactionHandler = () => {
+      if (ed.isDestroyed) return;
+      contextCanUndo = ed.can().undo();
+      contextCanRedo = ed.can().redo();
+      if (pane === "primary") reviewStore.syncCommentMarksFromEditor(ed);
+    };
+    ed.on("transaction", onTransactionHandler);
     editor = ed;
+    if (spellcheck) deferHeavyWork(() => prewarmSpellcheck());
     onEditorReady?.(ed);
     mountedChapterId = chapterId;
     mountedRevision = editorRevision;
@@ -91,23 +115,25 @@
   });
 
   $effect(() => {
-    if (!editor) return;
-    if (chapterId !== mountedChapterId || editorRevision !== mountedRevision) {
-      if (editor.isDestroyed) return;
-      editor.commands.setContent(html, { emitUpdate: false });
-      mountedChapterId = chapterId;
-      mountedRevision = editorRevision;
-      if (pane === "primary") {
-        reviewStore.syncCommentMarksFromEditor(editor);
-      }
-      if (chapterId && pane === "primary") {
-        const ed = editor;
-        requestAnimationFrame(() => {
-          if (!ed.isDestroyed && chapterId === mountedChapterId) {
-            ed.commands.focus("end");
-          }
-        });
-      }
+    if (!editor || editor.isDestroyed) return;
+    const chapterChanged = chapterId !== mountedChapterId;
+    const revisionChanged = editorRevision !== mountedRevision;
+    if (!chapterChanged && !revisionChanged) return;
+
+    editor.commands.setContent(html, { emitUpdate: false });
+    mountedChapterId = chapterId;
+    mountedRevision = editorRevision;
+    if (pane === "primary") {
+      reviewStore.attachEditor(editor);
+    }
+    // Only jump to end when switching chapters — not after accept/reject revision bumps.
+    if (chapterChanged && chapterId && pane === "primary") {
+      const ed = editor;
+      requestAnimationFrame(() => {
+        if (!ed.isDestroyed && chapterId === mountedChapterId) {
+          ed.commands.focus("end");
+        }
+      });
     }
   });
 
@@ -133,6 +159,7 @@
     editor = null;
     onEditorReady?.(null);
     if (ed && !ed.isDestroyed) {
+      if (onTransactionHandler) ed.off("transaction", onTransactionHandler);
       deferHeavyWork(() => {
         if (!ed.isDestroyed) ed.destroy();
       });
@@ -147,7 +174,12 @@
 <svelte:window onclick={closeContextMenu} />
 
 <div class="chapter-editor" data-editor-pane={pane} role="group">
-  <div class="editor-scroller" class:focus-mode={app.focusMode}>
+  <div
+    class="editor-scroller"
+    class:focus-mode={app.focusMode}
+    class:has-balloons={balloonsActive}
+    bind:this={scrollerEl}
+  >
     <div
       class="editor-page"
       role="presentation"
@@ -164,11 +196,17 @@
       <div
         class="editor-mount"
         class:editor-mode={app.mode === "editor"}
-        class:show-edits={reviewStore.showEditsComments}
+        class:markup-all={app.effectiveMarkupMode === "all"}
+        class:markup-simple={app.effectiveMarkupMode === "simple"}
+        class:markup-none={app.effectiveMarkupMode === "none"}
+        class:markup-original={app.effectiveMarkupMode === "original"}
         class:track-on={reviewStore.trackChanges}
         bind:this={element}
       ></div>
     </div>
+    {#if pane === "primary"}
+      <CommentBalloons scroller={scrollerEl} revision={editorRevision} />
+    {/if}
   </div>
 </div>
 
@@ -177,12 +215,17 @@
     x={contextMenu.x}
     y={contextMenu.y}
     {editor}
+    canUndo={contextCanUndo}
+    canRedo={contextCanRedo}
     spellWord={contextMenu.spellWord}
     spellFrom={contextMenu.spellFrom}
     spellTo={contextMenu.spellTo}
     spellSuggestions={contextMenu.spellSuggestions}
     onAddComment={() => {
-      app.addCommentOnSelection();
+      app.addCommentOnSelection(
+        contextMenu?.selectionFrom,
+        contextMenu?.selectionTo,
+      );
       closeContextMenu();
     }}
     onClose={closeContextMenu}
@@ -199,10 +242,16 @@
   }
 
   .editor-scroller {
+    position: relative;
     flex: 1;
     overflow-y: auto;
     padding: 28px 32px 72px;
     transition: padding var(--transition-focus);
+  }
+
+  /* Reserve a right gutter for comment balloons (Word-style margin). */
+  .editor-scroller.has-balloons {
+    padding-right: 280px;
   }
 
   .editor-scroller.focus-mode {
@@ -324,42 +373,75 @@
     text-decoration-style: wavy;
   }
 
+  /* ---- Review markup display modes (Word-style) ---- */
+  /* Comments: highlighted only when markup shows them (All / Simple). */
   .editor-mount :global(.dt-comment) {
     background: transparent;
     border-bottom: none;
   }
 
-  .editor-mount.editor-mode :global(.dt-comment),
-  .editor-mount.show-edits :global(.dt-comment) {
+  .editor-mount.markup-all :global(.dt-comment),
+  .editor-mount.markup-simple :global(.dt-comment) {
     background: rgba(201, 162, 39, 0.16);
     border-bottom: 1px dashed var(--status-refine);
     padding: 0 2px;
     border-radius: 2px;
   }
 
+  /* Stronger highlight when the matching margin balloon is hovered. */
+  .editor-mount :global(.dt-comment.dt-comment-active) {
+    background: rgba(201, 162, 39, 0.34);
+    box-shadow: 0 0 0 1px var(--status-refine);
+  }
+
+  /* Insertions: plain by default; colored per-author underline in All markup. */
   .editor-mount :global(.dt-insertion) {
     background: transparent;
   }
 
-  .editor-mount:not(.show-edits):not(.track-on) :global(.dt-deletion) {
+  .editor-mount.markup-all :global(.dt-insertion) {
+    background: color-mix(in srgb, var(--rev-color, var(--status-final)) 18%, transparent);
+    border-bottom: 1px solid var(--rev-color, var(--status-final));
+    color: var(--rev-color, inherit);
+  }
+
+  /* Original view = "before all edits": inserted text is hidden. */
+  .editor-mount.markup-original :global(.dt-insertion) {
     display: none;
   }
 
+  /* Deletions: plain by default (shown as the original text in Original view). */
   .editor-mount :global(.dt-deletion) {
     background: transparent;
     text-decoration: none;
   }
 
-  .editor-mount.show-edits :global(.dt-insertion),
-  .editor-mount.track-on :global(.dt-insertion) {
-    background: rgba(74, 158, 114, 0.18);
-    border-bottom: 1px solid var(--status-final);
+  .editor-mount.markup-all :global(.dt-deletion) {
+    background: color-mix(in srgb, var(--rev-color, var(--danger)) 14%, transparent);
+    text-decoration: line-through;
+    color: var(--rev-color, var(--danger));
   }
 
-  .editor-mount.show-edits :global(.dt-deletion),
-  .editor-mount.track-on :global(.dt-deletion) {
-    background: rgba(196, 92, 92, 0.14);
-    text-decoration: line-through;
-    color: var(--danger);
+  /* Final view (Simple / No Markup) = "after all edits": deletions hidden. */
+  .editor-mount.markup-simple :global(.dt-deletion),
+  .editor-mount.markup-none :global(.dt-deletion) {
+    display: none;
+  }
+
+  /* Left-margin revision bar for blocks containing changes (All / Simple). */
+  .editor-mount :global(.dt-change-block) {
+    position: relative;
+  }
+
+  .editor-mount.markup-all :global(.dt-change-block)::before,
+  .editor-mount.markup-simple :global(.dt-change-block)::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: -14px;
+    width: 2px;
+    border-radius: 1px;
+    background: var(--rev-bar, var(--accent));
   }
 </style>

@@ -34,6 +34,7 @@ export interface WorkspaceHost {
   showReadThrough: boolean;
   focusMode: boolean;
   focusChapterSearch: boolean;
+  showReviewPanel: boolean;
   activeDialog: unknown;
 
   applySettings(next: AppSettings, opts?: { skipLibrarySync?: boolean }): void;
@@ -248,5 +249,5 @@ export function goToWelcomeWorkspace(host: WorkspaceHost): void {
   host.focusMode = false;
   host.focusChapterSearch = false;
   host.sidebarTab = "chapters";
-  reviewStore.showReviewPanel = false;
+  host.showReviewPanel = false;
 }

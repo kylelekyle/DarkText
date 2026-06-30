@@ -1,11 +1,13 @@
 import type { Editor } from "@tiptap/core";
 import { Extension } from "@tiptap/core";
 import { Fragment, type MarkType, type Node as PMNode, type Slice } from "@tiptap/pm/model";
-import { Plugin, PluginKey, type Transaction } from "@tiptap/pm/state";
-import { ChangeSet } from "@tiptap/pm/changeset";
+import { Plugin, PluginKey, TextSelection, type Transaction } from "@tiptap/pm/state";
+import { ReplaceStep } from "@tiptap/pm/transform";
+import { isHistoryTransaction } from "prosemirror-history";
 
 const TRACK_META = "trackChanges";
 const trackStateByEditor = new WeakMap<Editor, boolean>();
+const authorByEditor = new WeakMap<Editor, string>();
 
 export function setTrackChangesEnabled(editor: Editor | null, enabled: boolean) {
   if (editor) trackStateByEditor.set(editor, enabled);
@@ -13,6 +15,20 @@ export function setTrackChangesEnabled(editor: Editor | null, enabled: boolean) 
 
 export function isTrackChangesEnabled(editor: Editor): boolean {
   return trackStateByEditor.get(editor) ?? false;
+}
+
+/** Name attributed to tracked changes this editor produces (Word-style author). */
+export function setReviewAuthor(editor: Editor | null, author: string) {
+  if (editor) authorByEditor.set(editor, author);
+}
+
+function reviewAuthor(editor: Editor): string | null {
+  return authorByEditor.get(editor) ?? null;
+}
+
+/** Build the attribute set for a change mark, omitting a null author. */
+function changeAttrs(markId: string, author: string | null): Record<string, unknown> {
+  return author ? { markId, author } : { markId };
 }
 
 function sliceHasNonDeletionText(slice: Slice, deletion: MarkType): boolean {
@@ -28,21 +44,59 @@ function addDeletionMarks(
   fragment: Fragment,
   deletion: MarkType,
   markId: string,
+  author: string | null,
 ): Fragment {
   const out: PMNode[] = [];
   fragment.forEach((node) => {
     if (node.isText) {
       const marks = deletion
-        .create({ markId })
+        .create(changeAttrs(markId, author))
         .addToSet(node.marks.filter((m) => m.type.name !== "deletion"));
       out.push(node.mark(marks));
     } else if (node.content.size) {
-      out.push(node.copy(addDeletionMarks(node.content, deletion, markId)));
+      out.push(node.copy(addDeletionMarks(node.content, deletion, markId, author)));
     } else {
       out.push(node);
     }
   });
   return Fragment.fromArray(out);
+}
+
+/** Reuse an adjacent deletion mark when extending a backspace/delete region. */
+function adjacentDeletionMarkId(
+  doc: PMNode,
+  pos: number,
+  deletion: MarkType,
+): string | null {
+  const $pos = doc.resolve(pos);
+  const before = $pos.nodeBefore;
+  if (before?.isText) {
+    const mark = before.marks.find((m) => m.type === deletion);
+    const id = mark?.attrs.markId as string | null | undefined;
+    if (id) return id;
+  }
+  const after = $pos.nodeAfter;
+  if (after?.isText) {
+    const mark = after.marks.find((m) => m.type === deletion);
+    const id = mark?.attrs.markId as string | null | undefined;
+    if (id) return id;
+  }
+  return null;
+}
+
+function stripDeletionMarks(
+  tr: Transaction,
+  from: number,
+  to: number,
+  deletion: MarkType,
+): void {
+  tr.doc.nodesBetween(from, to, (node, pos) => {
+    if (!node.isText) return;
+    if (!node.marks.some((m) => m.type === deletion)) return;
+    const start = Math.max(from, pos);
+    const end = Math.min(to, pos + node.nodeSize);
+    if (end > start) tr.removeMark(start, end, deletion);
+  });
 }
 
 function markInsertionRange(
@@ -52,8 +106,10 @@ function markInsertionRange(
   insertion: MarkType,
   deletion: MarkType,
   markId: string,
+  author: string | null,
 ): boolean {
   if (to <= from) return false;
+  stripDeletionMarks(tr, from, to, deletion);
   let modified = false;
   tr.doc.nodesBetween(from, to, (node, pos) => {
     if (!node.isText) return;
@@ -61,10 +117,41 @@ function markInsertionRange(
     const start = Math.max(from, pos);
     const end = Math.min(to, pos + node.nodeSize);
     if (end <= start) return;
-    tr.addMark(start, end, insertion.create({ markId }));
+    tr.addMark(start, end, insertion.create(changeAttrs(markId, author)));
     modified = true;
   });
   return modified;
+}
+
+function reinsertDeletion(
+  tr: Transaction,
+  insertPos: number,
+  deletedSlice: Slice,
+  deletionType: MarkType,
+  author: string | null,
+): { tr: Transaction; insertPos: number } {
+  const adjacentId = adjacentDeletionMarkId(tr.doc, insertPos, deletionType);
+  const delMarkId = adjacentId ?? crypto.randomUUID();
+  const marked = addDeletionMarks(
+    deletedSlice.content,
+    deletionType,
+    delMarkId,
+    author,
+  );
+  return { tr: tr.insert(insertPos, marked), insertPos };
+}
+
+/** Skip left over struck-through text so backspace edits live prose. */
+function liveTextPosBeforeDeletions(doc: PMNode, pos: number): number | null {
+  let cur = pos;
+  while (cur > 0) {
+    const $r = doc.resolve(cur);
+    const before = $r.nodeBefore;
+    if (!before?.isText) break;
+    if (!before.marks.some((m) => m.type.name === "deletion")) return cur;
+    cur -= before.nodeSize;
+  }
+  return cur > 0 ? cur : null;
 }
 
 export const TrackChangesPlugin = Extension.create({
@@ -78,67 +165,116 @@ export const TrackChangesPlugin = Extension.create({
 
     return [
       new Plugin({
+        key: new PluginKey("trackChangesKeys"),
+        props: {
+          handleKeyDown(view, event) {
+            if (!isTrackChangesEnabled(editor)) return false;
+            if (event.key !== "Backspace" || !view.state.selection.empty) return false;
+
+            const { $from } = view.state.selection;
+            const nodeBefore = $from.nodeBefore;
+            if (
+              !nodeBefore?.isText ||
+              !nodeBefore.marks.some((m) => m.type.name === "deletion")
+            ) {
+              return false;
+            }
+
+            const livePos = liveTextPosBeforeDeletions(view.state.doc, $from.pos);
+            if (livePos === null || livePos === $from.pos) return false;
+
+            view.dispatch(
+              view.state.tr.setSelection(
+                TextSelection.create(view.state.doc, livePos),
+              ),
+            );
+            return true;
+          },
+        },
+      }),
+      new Plugin({
         key: new PluginKey("trackChanges"),
         appendTransaction(transactions, oldState, newState) {
           if (!isTrackChangesEnabled(editor)) return null;
           if (transactions.some((t) => t.getMeta(TRACK_META))) return null;
+          if (transactions.some((t) => isHistoryTransaction(t))) return null;
           if (!transactions.some((t) => t.docChanged)) return null;
 
           let tr = newState.tr;
           let modified = false;
           let curDoc = oldState.doc;
+          let cursorBeforeDeletion: number | null = null;
+          let hadInsertion = false;
+          const author = reviewAuthor(editor);
 
           for (const transaction of transactions) {
             if (!transaction.docChanged || !transaction.doc) continue;
 
-            const beforeDoc = curDoc;
-            const maps = transaction.steps.map((s) => s.getMap());
-            const changeSet = ChangeSet.create(beforeDoc).addSteps(
-              transaction.doc,
-              maps,
-              null,
-            );
-            curDoc = transaction.doc;
+            let stepDoc = curDoc;
 
-            if (changeSet.changes.length === 0) continue;
+            for (const step of transaction.steps) {
+              if (!(step instanceof ReplaceStep)) {
+                stepDoc = step.apply(stepDoc).doc ?? stepDoc;
+                continue;
+              }
 
-            const deletions = [...changeSet.changes]
-              .filter((c) => c.toA > c.fromA)
-              .sort((a, b) => b.fromB - a.fromB);
+              const delFrom = step.from;
+              const delTo = step.to;
 
-            for (const change of deletions) {
-              const deletedSlice = beforeDoc.slice(change.fromA, change.toA);
-              if (!sliceHasNonDeletionText(deletedSlice, deletionType)) continue;
-              const insertPos = tr.mapping.map(change.fromB, -1);
-              const delMarkId = crypto.randomUUID();
-              const marked = addDeletionMarks(
-                deletedSlice.content,
-                deletionType,
-                delMarkId,
-              );
-              tr = tr.insert(insertPos, marked);
-              modified = true;
-            }
+              // setContent / load HTML replaces the whole document — marks are already in the slice.
+              if (delFrom === 0 && delTo === stepDoc.content.size) {
+                stepDoc = step.apply(stepDoc).doc ?? stepDoc;
+                continue;
+              }
 
-            for (const change of changeSet.changes) {
-              if (change.toB <= change.fromB) continue;
-              const from = tr.mapping.map(change.fromB, 1);
-              const to = tr.mapping.map(change.toB, -1);
-              if (to <= from) continue;
-              const insMarkId = crypto.randomUUID();
-              if (
-                markInsertionRange(
+              const deletedSlice = stepDoc.slice(delFrom, delTo);
+
+              if (sliceHasNonDeletionText(deletedSlice, deletionType)) {
+                const insertPos = tr.mapping.map(delFrom, -1);
+                const result = reinsertDeletion(
                   tr,
-                  from,
-                  to,
-                  insertionType,
+                  insertPos,
+                  deletedSlice,
                   deletionType,
-                  insMarkId,
-                )
-              ) {
+                  author,
+                );
+                tr = result.tr;
+                cursorBeforeDeletion =
+                  cursorBeforeDeletion === null
+                    ? result.insertPos
+                    : Math.min(cursorBeforeDeletion, result.insertPos);
                 modified = true;
               }
+
+              if (step.slice.size > 0) {
+                const insMarkId = crypto.randomUUID();
+                const from = tr.mapping.map(delFrom, 1);
+                const to = tr.mapping.map(delFrom + step.slice.size, -1);
+                if (
+                  markInsertionRange(
+                    tr,
+                    from,
+                    to,
+                    insertionType,
+                    deletionType,
+                    insMarkId,
+                    author,
+                  )
+                ) {
+                  hadInsertion = true;
+                  modified = true;
+                }
+              }
+
+              stepDoc = step.apply(stepDoc).doc ?? stepDoc;
             }
+
+            curDoc = transaction.doc;
+          }
+
+          if (modified && cursorBeforeDeletion !== null && !hadInsertion) {
+            const pos = Math.min(cursorBeforeDeletion, tr.doc.content.size);
+            tr = tr.setSelection(TextSelection.create(tr.doc, pos));
           }
 
           return modified ? tr.setMeta(TRACK_META, true) : null;

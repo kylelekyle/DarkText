@@ -12,6 +12,8 @@ import {
   insertToc,
 } from "$lib/editor/insert";
 import { setParagraphAlignment } from "$lib/editor/align";
+import { toggleStrikethrough } from "$lib/editor/formatActions";
+
 import { shortcutKeysForMenu } from "$lib/shortcuts/registry";
 import { formatError } from "$lib/utils/errors";
 import type { ChapterSection, MenuAction } from "$lib/types";
@@ -221,6 +223,7 @@ export function buildMenuActions(ctx: ActionContext): MenuAction[] {
     { id: "fmt.bold", label: "Bold", shortcut: menuShortcut("fmt.bold"), group: "Format", run: () => editor?.chain().focus().toggleBold().run() },
     { id: "fmt.italic", label: "Italic", shortcut: menuShortcut("fmt.italic"), group: "Format", run: () => editor?.chain().focus().toggleItalic().run() },
     { id: "fmt.underline", label: "Underline", shortcut: menuShortcut("fmt.underline"), group: "Format", run: () => editor?.chain().focus().toggleUnderline().run() },
+    { id: "fmt.strike", label: "Strikethrough", group: "Format", run: () => toggleStrikethrough(editor, app.mode === "editor") },
     { id: "fmt.left", label: "Align Left", group: "Format", run: () => editor && setParagraphAlignment(editor, "left") },
     { id: "fmt.center", label: "Align Center", group: "Format", run: () => editor && setParagraphAlignment(editor, "center") },
     { id: "fmt.right", label: "Align Right", group: "Format", run: () => editor && setParagraphAlignment(editor, "right") },
@@ -288,17 +291,17 @@ export function buildMenuActions(ctx: ActionContext): MenuAction[] {
     { id: "view.focus", label: "Focus Mode", shortcut: menuShortcut("view.focus"), group: "View", run: () => app.toggleFocusMode() },
     {
       id: "view.author",
-      label: "Writing Mode",
+      label: `${app.mode === "author" ? "◉" : "○"} Author environment`,
       group: "View",
       run: () => app.setMode("author"),
     },
     {
       id: "view.editor",
-      label: "Review Mode",
+      label: `${app.mode === "editor" ? "◉" : "○"} Editor environment`,
       group: "View",
       run: () => app.setMode("editor"),
     },
-    { id: "view.edits", label: "Show edits & comments", group: "View", run: () => app.toggleShowEdits() },
+    { id: "view.edits", label: "Show edits & comments", group: "Review", run: () => app.toggleShowEdits() },
 
     // Settings
     { id: "settings.open", label: "Settings…", group: "Settings", run: () => app.openDialog("settings") },
@@ -337,12 +340,12 @@ export const MENU_STRUCTURE: { label: string; group: string; items?: string[] }[
   {
     label: "Format",
     group: "Format",
-    items: ["fmt.bold", "fmt.italic", "fmt.underline", "fmt.h2", "fmt.h3", "fmt.left", "fmt.center", "fmt.right", "fmt.justify", "fmt.clear"],
+    items: ["fmt.bold", "fmt.italic", "fmt.underline", "fmt.strike", "fmt.h2", "fmt.h3", "fmt.left", "fmt.center", "fmt.right", "fmt.justify", "fmt.clear"],
   },
   {
     label: "Review",
     group: "Review",
-    items: ["review.comment", "review.track", "review.accept", "review.reject", "review.summary", "review.handoff", "review.panel"],
+    items: ["review.comment", "review.track", "view.edits", "review.accept", "review.reject", "review.summary", "review.handoff", "review.panel"],
   },
   {
     label: "Book",
@@ -352,7 +355,7 @@ export const MENU_STRUCTURE: { label: string; group: string; items?: string[] }[
   {
     label: "View",
     group: "View",
-    items: ["view.sidebar", "view.split", "view.mindmap", "view.readthrough", "view.spell", "view.focus", "view.author", "view.editor", "view.edits"],
+    items: ["view.sidebar", "view.split", "view.mindmap", "view.readthrough", "view.spell", "view.focus", "view.author", "view.editor"],
   },
   {
     label: "Settings",

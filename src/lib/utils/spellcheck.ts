@@ -3,6 +3,11 @@ import type Typo from "typo-js";
 
 let checkerPromise: Promise<Typo> | null = null;
 
+/** Load the dictionary in the background so the first context menu stays responsive. */
+export function prewarmSpellcheck(): void {
+  void getChecker();
+}
+
 async function getChecker(): Promise<Typo> {
   if (!checkerPromise) {
     checkerPromise = (async () => {

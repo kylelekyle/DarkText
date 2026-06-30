@@ -1,17 +1,36 @@
 import { Mark, mergeAttributes } from "@tiptap/core";
 
-function idMark(name: string, className: string, dataAttr: string) {
+interface IdMarkOptions {
+  /** Also carry a `data-author` attribute (used by tracked-change marks). */
+  withAuthor?: boolean;
+}
+
+function idMark(
+  name: string,
+  className: string,
+  dataAttr: string,
+  options: IdMarkOptions = {},
+) {
   return Mark.create({
     name,
     addAttributes() {
-      return {
+      const attrs: Record<string, unknown> = {
         markId: {
           default: null,
-          parseHTML: (el) => el.getAttribute(dataAttr),
-          renderHTML: (attrs) =>
-            attrs.markId ? { [dataAttr]: attrs.markId } : {},
+          parseHTML: (el: HTMLElement) => el.getAttribute(dataAttr),
+          renderHTML: (a: Record<string, unknown>) =>
+            a.markId ? { [dataAttr]: a.markId } : {},
         },
       };
+      if (options.withAuthor) {
+        attrs.author = {
+          default: null,
+          parseHTML: (el: HTMLElement) => el.getAttribute("data-author"),
+          renderHTML: (a: Record<string, unknown>) =>
+            a.author ? { "data-author": a.author } : {},
+        };
+      }
+      return attrs;
     },
     parseHTML() {
       return [{ tag: `span[${dataAttr}]` }];
@@ -26,10 +45,16 @@ function idMark(name: string, className: string, dataAttr: string) {
   });
 }
 
-export const Comment = idMark("comment", "dt-comment", "data-comment-id");
-export const Insertion = idMark("insertion", "dt-insertion", "data-change-id").extend({
+export const Comment = idMark("comment", "dt-comment", "data-comment-id").extend({
+  inclusive: false,
+});
+export const Insertion = idMark("insertion", "dt-insertion", "data-change-id", {
+  withAuthor: true,
+}).extend({
   inclusive: true,
 });
-export const Deletion = idMark("deletion", "dt-deletion", "data-change-id").extend({
+export const Deletion = idMark("deletion", "dt-deletion", "data-change-id", {
+  withAuthor: true,
+}).extend({
   inclusive: false,
 });

@@ -47,6 +47,36 @@ export function scrollToChange(editor: Editor, markId: string): boolean {
   return scrollToMarkId(editor, markId, ["insertion", "deletion"]);
 }
 
+export type ReviewItemKind = "change" | "comment";
+
+export interface ReviewItemPos {
+  kind: ReviewItemKind;
+  markId: string;
+  pos: number;
+}
+
+/** First document position of every change + comment mark, in reading order. */
+export function orderedReviewItems(editor: Editor): ReviewItemPos[] {
+  const firstPos = new Map<string, ReviewItemPos>();
+  editor.state.doc.descendants((node, pos) => {
+    if (!node.isText) return;
+    for (const mark of node.marks) {
+      const name = mark.type.name;
+      const kind: ReviewItemKind | null =
+        name === "comment"
+          ? "comment"
+          : name === "insertion" || name === "deletion"
+            ? "change"
+            : null;
+      if (!kind) continue;
+      const markId = mark.attrs.markId as string | null | undefined;
+      if (!markId || firstPos.has(markId)) continue;
+      firstPos.set(markId, { kind, markId, pos });
+    }
+  });
+  return [...firstPos.values()].sort((a, b) => a.pos - b.pos);
+}
+
 function flashAtPosition(editor: Editor, pos: number): void {
   if (typeof document === "undefined") return;
   const el = editor.view.domAtPos(pos).node as HTMLElement;

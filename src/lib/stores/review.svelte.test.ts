@@ -91,6 +91,14 @@ describe("ReviewStore comment persistence", () => {
     expect(ok).toBe(false);
   });
 
+  it("enableTrackChanges turns on tracking without toggling", () => {
+    store.trackChanges = false;
+    store.enableTrackChanges();
+    expect(store.trackChanges).toBe(true);
+    store.enableTrackChanges();
+    expect(store.trackChanges).toBe(true);
+  });
+
   it("syncChangesPanelFromEditor enables flushComments to persist new changes", async () => {
     store.trackChanges = true;
     const editor = {

@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onDestroy, onMount } from "svelte";
+  import { onDestroy, onMount, tick } from "svelte";
   import type { Editor } from "@tiptap/core";
   import { app } from "$lib/stores/app.svelte";
   import Sidebar from "./Sidebar.svelte";
@@ -20,18 +20,23 @@
   import AddCommentDialog from "./dialogs/AddCommentDialog.svelte";
   import MindMapPanel from "./MindMapPanel.svelte";
   import ReadThroughPanel from "./ReadThroughPanel.svelte";
-  import ReviewPanel from "./ReviewPanel.svelte";
+
   import LibraryReviewDialog from "./dialogs/LibraryReviewDialog.svelte";
   import EditorHandoffDialog from "./dialogs/EditorHandoffDialog.svelte";
   import ChapterSnapshotsDialog from "./dialogs/ChapterSnapshotsDialog.svelte";
   import ConfirmDialog from "./dialogs/ConfirmDialog.svelte";
+  import ReviewPanel from "./ReviewPanel.svelte";
+  import ReviewColorStyles from "./ReviewColorStyles.svelte";
+  import ReviewHoverCard from "./ReviewHoverCard.svelte";
   import { handleGlobalShortcut } from "$lib/shortcuts/registry";
+  import { portal } from "$lib/utils/portal";
   import { reviewStore } from "$lib/stores/review.svelte";
   import { libraryStore } from "$lib/stores/library.svelte";
   import type { ChapterSection } from "$lib/types";
   import { clearSidebarSelectionOnOutsideClick } from "$lib/utils/sidebarSelection";
 
   onMount(() => {
+    void tick().then(() => app.syncReviewPanelDom());
     if (app.confirmDialog) app.resolveConfirm(false);
     app.showQuickActions = false;
     for (const el of document.querySelectorAll("body > .overlay")) {
@@ -164,6 +169,9 @@
   class:mode-editor={app.mode === "editor"}
   class:focus-mode={app.focusMode}
   class:show-edits={app.showEditsComments}
+  class:review-panel-open={app.mode === "editor" &&
+    !app.focusMode &&
+    !app.reviewPanelDismissed}
 >
   <MenuBar editor={app.activeEditorRef} />
 
@@ -294,23 +302,6 @@
       </div>
     </main>
 
-    {#if app.mode === "editor" && app.showReviewPanel && !app.focusMode}
-      <aside class="review-slot">
-        <div class="review-header">
-          <span class="review-title">Review</span>
-          <button
-            class="review-close"
-            title="Close review panel"
-            onclick={() => app.toggleReviewPanel()}
-          >
-            ×
-          </button>
-        </div>
-        <div class="review-body">
-          <ReviewPanel />
-        </div>
-      </aside>
-    {/if}
   </div>
 
   <StatusBar />
@@ -329,6 +320,28 @@
     </button>
   {/if}
 </div>
+
+<aside
+  class="review-slot"
+  class:is-open={app.mode === "editor" && !app.focusMode && !app.reviewPanelDismissed}
+  aria-label="Review panel"
+  aria-hidden={!(app.mode === "editor" && !app.focusMode && !app.reviewPanelDismissed)}
+  use:portal
+>
+  <div class="review-header">
+    <span class="review-title">Review</span>
+    <button
+      class="review-close"
+      title="Close review panel"
+      onclick={() => app.toggleReviewPanel()}
+    >
+      ×
+    </button>
+  </div>
+  <div class="review-body">
+    <ReviewPanel />
+  </div>
+</aside>
 
 <QuickActions editor={app.activeEditorRef} />
 
@@ -368,6 +381,9 @@
 
 <ConfirmDialog />
 
+<ReviewColorStyles />
+<ReviewHoverCard />
+
 <style>
   .app-shell {
     display: flex;
@@ -376,6 +392,72 @@
     min-height: 0;
     overflow: hidden;
     transition: background var(--transition-smooth);
+  }
+
+  .app-shell.review-panel-open :global(.editor-area) {
+    margin-right: 280px;
+    transition: margin-right var(--transition-smooth);
+  }
+
+  :global(aside.review-slot) {
+    position: fixed;
+    top: calc(var(--titlebar-height) + 36px + 36px);
+    right: 0;
+    bottom: 28px;
+    width: 280px;
+    display: flex;
+    flex-direction: column;
+    background: var(--bg-elevated);
+    border-left: 2px solid var(--accent);
+    box-shadow: -8px 0 32px rgba(0, 0, 0, 0.5);
+    overflow: hidden;
+    z-index: 180;
+    pointer-events: none;
+    visibility: hidden;
+    opacity: 0;
+    transition: opacity 0.18s ease, visibility 0.18s ease;
+  }
+
+  :global(aside.review-slot.is-open) {
+    visibility: visible;
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  :global(aside.review-slot .review-header) {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--border-subtle);
+    flex-shrink: 0;
+  }
+
+  :global(aside.review-slot .review-title) {
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-muted);
+  }
+
+  :global(aside.review-slot .review-close) {
+    font-size: 16px;
+    line-height: 1;
+    color: var(--text-muted);
+    padding: 2px 6px;
+    border-radius: 4px;
+  }
+
+  :global(aside.review-slot .review-close:hover) {
+    color: var(--text-primary);
+    background: var(--bg-hover);
+  }
+
+  :global(aside.review-slot .review-body) {
+    flex: 1;
+    overflow-y: auto;
+    min-height: 0;
   }
 
   .toolbar-slot {
@@ -419,13 +501,14 @@
   }
 
   .editor-area {
-    flex: 1;
+    flex: 1 1 0;
     display: flex;
     flex-direction: column;
+    min-width: 0;
     min-height: 0;
     overflow: hidden;
     background: var(--editor-canvas);
-    transition: background var(--transition-focus);
+    transition: background var(--transition-focus), margin-right var(--transition-smooth);
   }
 
   .editor-split {
@@ -579,64 +662,6 @@
     max-width: 280px;
     text-align: center;
     line-height: 1.5;
-  }
-
-  .review-slot {
-    flex-shrink: 0;
-    width: 280px;
-    display: flex;
-    flex-direction: column;
-    background: var(--bg-surface);
-    border-left: 1px solid var(--border-subtle);
-    overflow: hidden;
-    animation: review-in 0.22s var(--ease-focus);
-  }
-
-  @keyframes review-in {
-    from {
-      opacity: 0;
-      transform: translateX(12px);
-    }
-    to {
-      opacity: 1;
-      transform: translateX(0);
-    }
-  }
-
-  .review-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 8px 12px;
-    border-bottom: 1px solid var(--border-subtle);
-    flex-shrink: 0;
-  }
-
-  .review-title {
-    font-size: 10px;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    color: var(--text-muted);
-  }
-
-  .review-close {
-    font-size: 16px;
-    line-height: 1;
-    color: var(--text-muted);
-    padding: 2px 6px;
-    border-radius: 4px;
-  }
-
-  .review-close:hover {
-    color: var(--text-primary);
-    background: var(--bg-hover);
-  }
-
-  .review-body {
-    flex: 1;
-    overflow-y: auto;
-    min-height: 0;
   }
 
   .app-shell.mode-editor .editor-area {

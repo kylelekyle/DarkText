@@ -13,9 +13,15 @@ import type { EditorView } from "@tiptap/pm/view";
 import { getSpellSuggestions, getWordAtEditorPoint, isMisspelled } from "$lib/utils/spellcheck";
 import { Comment, Deletion, Insertion } from "$lib/editor/marks";
 import { TrackChangesPlugin } from "$lib/editor/trackChanges";
+import { ChangeBarPlugin } from "$lib/editor/reviewDecorations";
 import { createLibraryImageExtension } from "$lib/editor/libraryImage";
 import { handleEditorMousedown } from "$lib/editor/focus";
 import { prepareHtmlForPaste } from "$lib/export/sanitizeHtml";
+import {
+  cursorInComment,
+  htmlToInlinePasteText,
+  insertInlinePaste,
+} from "$lib/editor/paste";
 
 export interface SpellContextMenuState {
   x: number;
@@ -24,6 +30,9 @@ export interface SpellContextMenuState {
   spellFrom?: number;
   spellTo?: number;
   spellSuggestions?: string[];
+  /** Selection captured when the menu opened (right-click clears editor focus). */
+  selectionFrom?: number;
+  selectionTo?: number;
 }
 
 export function buildChapterExtensions(libraryPath: string | null) {
@@ -33,6 +42,7 @@ export function buildChapterExtensions(libraryPath: string | null) {
       codeBlock: false,
       code: false,
       blockquote: false,
+      underline: false,
     }),
     TextStyle,
     FontSize,
@@ -42,6 +52,7 @@ export function buildChapterExtensions(libraryPath: string | null) {
     Insertion,
     Deletion,
     TrackChangesPlugin,
+    ChangeBarPlugin,
     createLibraryImageExtension(libraryPath),
     Table.configure({ resizable: false }),
     TableRow,
@@ -68,19 +79,26 @@ export function buildChapterEditorProps(
       class: "chapter-prose",
       spellcheck: spellcheckOn ? "true" : "false",
     },
-    handlePaste: (_view: EditorView, event: ClipboardEvent) => {
+    handlePaste: (view: EditorView, event: ClipboardEvent) => {
       const clipboard = event.clipboardData;
       if (!clipboard) return false;
 
       const html = clipboard.getData("text/html")?.trim();
+      const plain = clipboard.getData("text/plain") ?? "";
+
+      // Inside a comment, never insert block nodes (keeps the paragraph intact).
+      if (cursorInComment(view) && (html || plain)) {
+        event.preventDefault();
+        const text = html ? htmlToInlinePasteText(prepareHtmlForPaste(html).html || html) : plain;
+        if (text) insertInlinePaste(getEd(), text);
+        return true;
+      }
+
       if (html) {
+        event.preventDefault();
         const { html: safe, blockedImages } = prepareHtmlForPaste(html);
-        if (blockedImages) {
-          handlers.notifyBlockedImagePaste();
-        }
-        if (safe) {
-          getEd().chain().focus().insertContent(safe).run();
-        }
+        if (blockedImages) handlers.notifyBlockedImagePaste();
+        if (safe) getEd().chain().focus().insertContent(safe).run();
         return true;
       }
       return false;
@@ -94,26 +112,36 @@ export function buildChapterEditorProps(
         event.preventDefault();
         const ev = event as MouseEvent;
         const gen = handlers.nextGen();
-        const base = { x: ev.clientX, y: ev.clientY };
+        const { from, to, empty } = getEd().state.selection;
+        const base = {
+          x: ev.clientX,
+          y: ev.clientY,
+          selectionFrom: empty ? undefined : from,
+          selectionTo: empty ? undefined : to,
+        };
         handlers.setContextMenu(base);
-        if (spellcheckOn) {
+        // Selection context menus are for comments/format — skip heavy spell lookup.
+        if (spellcheckOn && empty) {
           const wordInfo = getWordAtEditorPoint(getEd(), ev.clientX, ev.clientY);
           if (wordInfo) {
-            void (async () => {
-              if (!handlers.isCurrentGen(gen)) return;
-              const misspelled = await isMisspelled(wordInfo.word);
-              if (!handlers.isCurrentGen(gen)) return;
-              if (!misspelled) return;
-              const spellSuggestions = await getSpellSuggestions(wordInfo.word);
-              if (!handlers.isCurrentGen(gen)) return;
-              handlers.setContextMenu({
-                ...base,
-                spellWord: wordInfo.word,
-                spellFrom: wordInfo.from,
-                spellTo: wordInfo.to,
-                spellSuggestions,
-              });
-            })();
+            const spellBase = { ...base };
+            queueMicrotask(() => {
+              void (async () => {
+                if (!handlers.isCurrentGen(gen)) return;
+                const misspelled = await isMisspelled(wordInfo.word);
+                if (!handlers.isCurrentGen(gen)) return;
+                if (!misspelled) return;
+                const spellSuggestions = await getSpellSuggestions(wordInfo.word);
+                if (!handlers.isCurrentGen(gen)) return;
+                handlers.setContextMenu({
+                  ...spellBase,
+                  spellWord: wordInfo.word,
+                  spellFrom: wordInfo.from,
+                  spellTo: wordInfo.to,
+                  spellSuggestions,
+                });
+              })();
+            });
           }
         }
         return true;

@@ -17,9 +17,16 @@ export function collectCommentMarkIdsFromEditor(editor: Editor): Set<string> {
   return ids;
 }
 
-function collectMarkTexts(editor: Editor): Map<string, { type: "insertion" | "deletion"; text: string }> {
+interface MarkInfo {
+  type: "insertion" | "deletion";
+  text: string;
+  author: string | null;
+}
+
+function collectMarkTexts(editor: Editor): Map<string, MarkInfo> {
   const parts = new Map<string, string[]>();
   const types = new Map<string, "insertion" | "deletion">();
+  const authors = new Map<string, string | null>();
 
   editor.state.doc.descendants((node) => {
     if (!node.isText) return;
@@ -28,17 +35,23 @@ function collectMarkTexts(editor: Editor): Map<string, { type: "insertion" | "de
       const markId = mark.attrs.markId as string | null | undefined;
       if (!markId) continue;
       types.set(markId, mark.type.name === "deletion" ? "deletion" : "insertion");
+      const author = mark.attrs.author as string | null | undefined;
+      if (author && !authors.get(markId)) authors.set(markId, author);
       const bucket = parts.get(markId) ?? [];
       if (node.text) bucket.push(node.text);
       parts.set(markId, bucket);
     }
   });
 
-  const result = new Map<string, { type: "insertion" | "deletion"; text: string }>();
+  const result = new Map<string, MarkInfo>();
   for (const [markId, chunks] of parts) {
     const type = types.get(markId);
     if (!type) continue;
-    result.set(markId, { type, text: chunks.join("").slice(0, 80) });
+    result.set(markId, {
+      type,
+      text: chunks.join("").slice(0, 80),
+      author: authors.get(markId) ?? null,
+    });
   }
   return result;
 }
@@ -52,11 +65,11 @@ export function syncChangesFromEditor(
   const live = collectMarkTexts(editor);
   const result: TrackedChange[] = [];
 
-  for (const [markId, { type, text }] of live) {
+  for (const [markId, { type, text, author }] of live) {
     const prev = existingMap.get(markId);
     result.push(
       prev
-        ? { ...prev, type, text }
+        ? { ...prev, type, text, author: prev.author ?? author ?? undefined }
         : {
             id: markId,
             markId,
@@ -64,6 +77,7 @@ export function syncChangesFromEditor(
             text,
             status: "pending",
             createdAt: new Date().toISOString(),
+            author: author ?? undefined,
           },
     );
   }
@@ -84,16 +98,18 @@ export function syncChangesFromHtml(
     const markId = el.getAttribute("data-change-id");
     if (!markId) continue;
     const type = el.classList.contains("dt-deletion") ? "deletion" : "insertion";
+    const author = el.getAttribute("data-author");
     const prev = existingMap.get(markId);
     const text = el.textContent?.slice(0, 80) ?? "";
     result.push(
-      prev ? { ...prev, type, text } : {
+      prev ? { ...prev, type, text, author: prev.author ?? author ?? undefined } : {
         id: markId,
         markId,
         type,
         text,
         status: "pending",
         createdAt: new Date().toISOString(),
+        author: author ?? undefined,
       },
     );
   }
@@ -132,7 +148,6 @@ export function applyChangeInEditor(
 
   return editor
     .chain()
-    .focus()
     .command(({ tr, state, dispatch }) => {
       const ranges: { from: number; to: number }[] = [];
 

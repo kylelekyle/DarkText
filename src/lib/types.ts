@@ -93,6 +93,9 @@ export interface ExportBatchOptions {
 export type ChangeStatus = "pending" | "accepted" | "rejected";
 export type ChangeType = "insertion" | "deletion";
 
+/** Word-style markup display modes for the review editor. */
+export type MarkupMode = "simple" | "all" | "none" | "original";
+
 export interface ChapterMeta {
   id: string;
   title: string;
@@ -186,6 +189,8 @@ export interface TrackedChange {
   text: string;
   status: ChangeStatus;
   createdAt: string;
+  /** Display name of whoever made the change (optional for legacy sidecars). */
+  author?: string;
 }
 
 export interface ChapterComments {

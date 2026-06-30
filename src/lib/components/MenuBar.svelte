@@ -23,6 +23,18 @@
   const activeSection = $derived(chapterStore.activeSection);
   const sidebarTab = $derived(app.sidebarTab);
 
+  /**
+   * Strict environment separation: the Author environment hides review tools,
+   * the Editor environment hides authoring tools (Format / Insert).
+   */
+  const visibleMenus = $derived(
+    MENU_STRUCTURE.filter((m) =>
+      app.mode === "author"
+        ? m.group !== "Review"
+        : m.group !== "Format" && m.group !== "Insert",
+    ),
+  );
+
   const actions = $derived(
     buildMenuActions({
       editor,
@@ -104,7 +116,7 @@
 
 <header class="menu-bar" bind:this={menuBarEl}>
   <nav class="menus">
-    {#each MENU_STRUCTURE as menu}
+    {#each visibleMenus as menu}
       <div class="menu-wrap">
         <button
           class="menu-btn"

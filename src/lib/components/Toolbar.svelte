@@ -1,6 +1,8 @@
 <script lang="ts">
   import type { Editor } from "@tiptap/core";
+  import type { MarkupMode } from "$lib/types";
   import { app } from "$lib/stores/app.svelte";
+  import { reviewStore } from "$lib/stores/review.svelte";
   import { fontStore } from "$lib/stores/fonts.svelte";
   import { setParagraphAlignment } from "$lib/editor/align";
   import {
@@ -16,6 +18,10 @@
     resolveFontSize,
   } from "$lib/utils/typography";
   import FontFamilyPicker from "./FontFamilyPicker.svelte";
+  import {
+    isStrikethroughActive,
+    toggleStrikethrough,
+  } from "$lib/editor/formatActions";
 
 
   interface Props {
@@ -34,6 +40,7 @@
   let isBold = $state(false);
   let isItalic = $state(false);
   let isUnderline = $state(false);
+  let isStrike = $state(false);
   let lastDefaultFontSize = app.settings.defaultFontSize;
 
   $effect(() => {
@@ -57,12 +64,14 @@
   }
 
   $effect(() => {
+    const reviewMode = app.mode === "editor";
     if (!editor || editor.isDestroyed) {
       canUndo = false;
       canRedo = false;
       isBold = false;
       isItalic = false;
       isUnderline = false;
+      isStrike = false;
       return;
     }
     const syncToolbar = () => {
@@ -72,6 +81,7 @@
       isBold = editor.isActive("bold");
       isItalic = editor.isActive("italic");
       isUnderline = editor.isActive("underline");
+      isStrike = isStrikethroughActive(editor, reviewMode);
       toolbarFontSize = fontSizeMarkAtEditor(editor) ?? typingFontSize;
     };
     const onSelectionUpdate = () => {
@@ -122,6 +132,7 @@
 
 <div class="toolbar" class:editor-mode={app.mode === "editor"} class:author-mode={app.mode === "author"}>
   {#if app.mode === "author"}
+    <span class="mode-label">Author</span>
     <FontFamilyPicker compact value={typingFont} onchange={(v) => void applyFont(v)} />
 
     <select
@@ -163,6 +174,15 @@
     >
       <span class="underline">U</span>
     </button>
+    <button
+      class="tool-btn"
+      class:active={isStrike}
+      title="Strikethrough"
+      aria-pressed={isStrike}
+      onclick={cmd(() => toggleStrikethrough(editor, false))}
+    >
+      <span class="strike">S</span>
+    </button>
 
     <div class="sep"></div>
 
@@ -178,15 +198,59 @@
 
     <div class="sep"></div>
 
-    <button class="tool-btn comment-btn" title="Add comment" onclick={cmd(() => app.addCommentOnSelection())}>Cmt</button>
-
-    <div class="sep"></div>
-
     <button class="tool-btn" title="Undo" onclick={cmd(() => editor?.chain().focus().undo().run())} disabled={!canUndo}>↩</button>
     <button class="tool-btn" title="Redo" onclick={cmd(() => editor?.chain().focus().redo().run())} disabled={!canRedo}>↪</button>
   {:else}
-    <span class="mode-label">Review Mode — track changes &amp; comments</span>
+    <span class="mode-label">Editor</span>
+    <select
+      class="tool-select"
+      title="Markup display mode"
+      value={app.markupMode}
+      onchange={(e) =>
+        app.setMarkupMode((e.currentTarget as HTMLSelectElement).value as MarkupMode)}
+    >
+      <option value="all">All Markup</option>
+      <option value="simple">Simple Markup</option>
+      <option value="none">No Markup</option>
+      <option value="original">Original</option>
+    </select>
+    <button
+      class="tool-btn"
+      class:active={reviewStore.trackChanges}
+      title="Track changes"
+      aria-pressed={reviewStore.trackChanges}
+      onclick={cmd(() => app.toggleTrackChanges())}
+    >Track</button>
+    <div class="sep"></div>
     <button class="tool-btn" title="Add comment" onclick={cmd(() => app.addCommentOnSelection())}>Comment</button>
+    <button
+      class="tool-btn"
+      class:active={isStrike}
+      title="Mark selection as deleted"
+      aria-pressed={isStrike}
+      onclick={cmd(() => toggleStrikethrough(editor, true))}
+    >Strike</button>
+    <div class="sep"></div>
+    <button
+      class="tool-btn"
+      title="Previous change or comment"
+      onclick={cmd(() => app.goToPrevItem())}
+    >◀</button>
+    <button
+      class="tool-btn"
+      title="Next change or comment"
+      onclick={cmd(() => app.goToNextItem())}
+    >▶</button>
+    <button
+      class="tool-btn accept"
+      title="Accept change & go to next"
+      onclick={cmd(() => app.acceptAndAdvance("accept"))}
+    >✓</button>
+    <button
+      class="tool-btn reject"
+      title="Reject change & go to next"
+      onclick={cmd(() => app.acceptAndAdvance("reject"))}
+    >✕</button>
     <div class="sep"></div>
     <button class="tool-btn" title="Undo" onclick={cmd(() => editor?.chain().focus().undo().run())} disabled={!canUndo}>↩</button>
     <button class="tool-btn" title="Redo" onclick={cmd(() => editor?.chain().focus().redo().run())} disabled={!canRedo}>↪</button>
@@ -275,8 +339,15 @@
     text-decoration: underline;
   }
 
-  .comment-btn {
-    font-size: 10px;
-    letter-spacing: 0.02em;
+  .strike {
+    text-decoration: line-through;
+  }
+
+  .tool-btn.accept {
+    color: var(--status-final);
+  }
+
+  .tool-btn.reject {
+    color: var(--danger);
   }
 </style>

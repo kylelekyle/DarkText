@@ -13,7 +13,8 @@ export function trackedChangesDiffer(
       a.markId !== b.markId ||
       a.type !== b.type ||
       a.text !== b.text ||
-      a.status !== b.status
+      a.status !== b.status ||
+      a.author !== b.author
     ) {
       return true;
     }
