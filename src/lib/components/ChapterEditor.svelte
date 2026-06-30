@@ -361,8 +361,8 @@
     background: transparent;
   }
 
-  /* Hide struck-through deletions unless actively tracking (Word hides them when off). */
-  .editor-mount:not(.track-on) :global(.dt-deletion) {
+  /* Author + track off: hide deletions (Word-style). Review mode always shows them. */
+  .editor-mount:not(.track-on):not(.editor-mode):not(.show-edits) :global(.dt-deletion) {
     display: none;
   }
 
@@ -371,16 +371,20 @@
     text-decoration: none;
   }
 
-  .editor-mount:not(.track-on) :global(.dt-insertion) {
+  .editor-mount:not(.track-on):not(.editor-mode):not(.show-edits) :global(.dt-insertion) {
     background: transparent;
     border-bottom: none;
   }
 
+  .editor-mount.editor-mode :global(.dt-insertion),
+  .editor-mount.show-edits :global(.dt-insertion),
   .editor-mount.track-on :global(.dt-insertion) {
     background: rgba(74, 158, 114, 0.18);
     border-bottom: 1px solid var(--status-final);
   }
 
+  .editor-mount.editor-mode :global(.dt-deletion),
+  .editor-mount.show-edits :global(.dt-deletion),
   .editor-mount.track-on :global(.dt-deletion) {
     background: rgba(196, 92, 92, 0.14);
     text-decoration: line-through;

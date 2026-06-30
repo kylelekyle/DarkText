@@ -299,7 +299,7 @@ export class ReviewStore {
 
   /** Live panel sync while typing; marks sidecar dirty when change metadata shifts. */
   syncChangesPanelFromEditor(editor?: Editor | null) {
-    if (!this.trackChanges && this.pendingChanges.length === 0) return;
+    if (!this.trackChanges && this.pendingChanges.length === 0 && !this.showReviewPanel) return;
     const ed = editor ?? this.getEditor();
     if (!ed) return;
     const prev = this.chapterComments.changes;
@@ -316,7 +316,8 @@ export class ReviewStore {
     if (
       !opts?.force &&
       !this.trackChanges &&
-      this.pendingChanges.length === 0
+      this.pendingChanges.length === 0 &&
+      !this.showReviewPanel
     ) {
       return;
     }

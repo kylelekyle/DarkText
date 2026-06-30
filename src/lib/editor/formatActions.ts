@@ -1,6 +1,14 @@
 import type { Editor } from "@tiptap/core";
+import { setTrackChangesEnabled } from "$lib/editor/trackChanges";
+import { reviewStore } from "$lib/stores/review.svelte";
 
 const TRACK_META = "trackChanges";
+
+function ensureReviewTracking(editor: Editor | null): void {
+  if (!editor || reviewStore.trackChanges) return;
+  reviewStore.trackChanges = true;
+  setTrackChangesEnabled(editor, true);
+}
 
 export function toggleBold(editor: Editor | null): void {
   editor?.chain().focus().toggleBold().run();
@@ -34,8 +42,12 @@ export function isDeletionMarkActive(editor: Editor | null): boolean {
 
 /** Author: plain strikethrough. Review: tracked deletion mark. */
 export function toggleStrikethrough(editor: Editor | null, reviewMode: boolean): void {
-  if (reviewMode) toggleTrackedDeletionMark(editor);
-  else toggleStrike(editor);
+  if (reviewMode) {
+    ensureReviewTracking(editor);
+    toggleTrackedDeletionMark(editor);
+  } else {
+    toggleStrike(editor);
+  }
 }
 
 export function isStrikethroughActive(editor: Editor | null, reviewMode: boolean): boolean {

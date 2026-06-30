@@ -91,6 +91,31 @@ describe("ReviewStore comment persistence", () => {
     expect(ok).toBe(false);
   });
 
+  it("syncChangesPanelFromEditor syncs in review mode even when track is off", () => {
+    store.trackChanges = false;
+    store.showReviewPanel = true;
+    const editor = {
+      state: {
+        doc: {
+          descendants(fn: (node: { isText: boolean; text?: string; marks: { type: { name: string }; attrs: { markId: string } }[] }, pos: number) => void) {
+            fn(
+              {
+                isText: true,
+                text: "cut",
+                marks: [{ type: { name: "deletion" }, attrs: { markId: "d1" } }],
+              },
+              1,
+            );
+          },
+        },
+      },
+    } as unknown as import("@tiptap/core").Editor;
+
+    store.syncChangesPanelFromEditor(editor);
+    expect(store.chapterComments.changes).toHaveLength(1);
+    expect(store.chapterComments.changes[0].type).toBe("deletion");
+  });
+
   it("syncChangesPanelFromEditor enables flushComments to persist new changes", async () => {
     store.trackChanges = true;
     const editor = {
