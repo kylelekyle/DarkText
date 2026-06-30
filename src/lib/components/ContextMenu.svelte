@@ -5,10 +5,11 @@
     redoEditor,
     toggleBold,
     toggleItalic,
-    toggleTrackedDeletionMark,
+    toggleStrikethrough,
     toggleUnderline,
     undoEditor,
   } from "$lib/editor/formatActions";
+  import { app } from "$lib/stores/app.svelte";
   import { applySpellSuggestion } from "$lib/utils/spellcheck";
 
   interface Props {
@@ -98,7 +99,7 @@
   <button type="button" role="menuitem" onclick={() => run(() => toggleBold(editor))}>Bold</button>
   <button type="button" role="menuitem" onclick={() => run(() => toggleItalic(editor))}>Italic</button>
   <button type="button" role="menuitem" onclick={() => run(() => toggleUnderline(editor))}>Underline</button>
-  <button type="button" role="menuitem" onclick={() => run(() => toggleTrackedDeletionMark(editor))}>Strikethrough</button>
+  <button type="button" role="menuitem" onclick={() => run(() => toggleStrikethrough(editor, app.mode === "editor"))}>Strikethrough</button>
   <div class="sep" role="separator"></div>
   <button type="button" role="menuitem" onclick={() => run(() => onAddComment?.())}>Add Comment</button>
   <div class="sep" role="separator"></div>

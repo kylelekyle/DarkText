@@ -1,6 +1,6 @@
 import { describe, expect, it, afterEach } from "vitest";
 import type { Editor } from "@tiptap/core";
-import { toggleTrackedDeletionMark } from "$lib/editor/formatActions";
+import { toggleStrike, toggleTrackedDeletionMark } from "$lib/editor/formatActions";
 import { applyChangeInEditor } from "$lib/editor/review";
 import { replaceAllInDocument, replaceOneInDocument } from "$lib/editor/search";
 import { setTrackChangesEnabled } from "$lib/editor/trackChanges";
@@ -292,7 +292,16 @@ describe("TrackChangesPlugin", () => {
     expect(editorPlainText(editor)).toBe("Start one two");
   });
 
-  it("toolbar strikethrough applies a review deletion mark", () => {
+  it("author strikethrough uses plain strike, not deletion marks", () => {
+    const editor = track();
+    expect(selectText(editor, "world")).toBe(true);
+    toggleStrike(editor);
+    const html = editor.getHTML();
+    expect(html).toMatch(/<s>world<\/s>/);
+    expect(html).not.toContain("dt-deletion");
+  });
+
+  it("review strikethrough applies a deletion mark", () => {
     const editor = track();
     expect(selectText(editor, "world")).toBe(true);
     toggleTrackedDeletionMark(editor);

@@ -14,6 +14,10 @@ export function toggleUnderline(editor: Editor | null): void {
   editor?.chain().focus().toggleUnderline().run();
 }
 
+export function toggleStrike(editor: Editor | null): void {
+  editor?.chain().focus().toggleStrike().run();
+}
+
 function selectionTouchesDeletion(editor: Editor, from: number, to: number): boolean {
   if (from === to) return editor.isActive("deletion");
   let found = false;
@@ -28,7 +32,18 @@ export function isDeletionMarkActive(editor: Editor | null): boolean {
   return !!editor && !editor.isDestroyed && editor.isActive("deletion");
 }
 
-/** Toolbar/context-menu strikethrough — applies review deletion marks, not plain <s>. */
+/** Author: plain strikethrough. Review: tracked deletion mark. */
+export function toggleStrikethrough(editor: Editor | null, reviewMode: boolean): void {
+  if (reviewMode) toggleTrackedDeletionMark(editor);
+  else toggleStrike(editor);
+}
+
+export function isStrikethroughActive(editor: Editor | null, reviewMode: boolean): boolean {
+  if (!editor || editor.isDestroyed) return false;
+  return reviewMode ? editor.isActive("deletion") : editor.isActive("strike");
+}
+
+/** Review-mode strikethrough — applies dt-deletion marks, not plain <s>. */
 export function toggleTrackedDeletionMark(editor: Editor | null): void {
   if (!editor) return;
   const deletion = editor.schema.marks.deletion;

@@ -17,8 +17,8 @@
   } from "$lib/utils/typography";
   import FontFamilyPicker from "./FontFamilyPicker.svelte";
   import {
-    isDeletionMarkActive,
-    toggleTrackedDeletionMark,
+    isStrikethroughActive,
+    toggleStrikethrough,
   } from "$lib/editor/formatActions";
 
 
@@ -38,7 +38,7 @@
   let isBold = $state(false);
   let isItalic = $state(false);
   let isUnderline = $state(false);
-  let isDeletion = $state(false);
+  let isStrike = $state(false);
   let lastDefaultFontSize = app.settings.defaultFontSize;
 
   $effect(() => {
@@ -62,13 +62,14 @@
   }
 
   $effect(() => {
+    const reviewMode = app.mode === "editor";
     if (!editor || editor.isDestroyed) {
       canUndo = false;
       canRedo = false;
       isBold = false;
       isItalic = false;
       isUnderline = false;
-      isDeletion = false;
+      isStrike = false;
       return;
     }
     const syncToolbar = () => {
@@ -78,7 +79,7 @@
       isBold = editor.isActive("bold");
       isItalic = editor.isActive("italic");
       isUnderline = editor.isActive("underline");
-      isDeletion = isDeletionMarkActive(editor);
+      isStrike = isStrikethroughActive(editor, reviewMode);
       toolbarFontSize = fontSizeMarkAtEditor(editor) ?? typingFontSize;
     };
     const onSelectionUpdate = () => {
@@ -172,10 +173,10 @@
     </button>
     <button
       class="tool-btn"
-      class:active={isDeletion}
-      title="Mark as deleted"
-      aria-pressed={isDeletion}
-      onclick={cmd(() => toggleTrackedDeletionMark(editor))}
+      class:active={isStrike}
+      title="Strikethrough"
+      aria-pressed={isStrike}
+      onclick={cmd(() => toggleStrikethrough(editor, false))}
     >
       <span class="strike">S</span>
     </button>
@@ -222,9 +223,9 @@
     ><span class="underline">U</span></button>
     <button
       class="tool-btn"
-      class:active={isDeletion}
+      class:active={isStrike}
       title="Mark as deleted"
-      onclick={cmd(() => toggleTrackedDeletionMark(editor))}
+      onclick={cmd(() => toggleStrikethrough(editor, true))}
     ><span class="strike">S</span></button>
     <div class="sep"></div>
     <button class="tool-btn" title="Add comment" onclick={cmd(() => app.addCommentOnSelection())}>Comment</button>
