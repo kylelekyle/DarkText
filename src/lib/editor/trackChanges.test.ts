@@ -204,6 +204,46 @@ describe("TrackChangesPlugin", () => {
     expect(b.getHTML()).not.toContain("dt-insertion");
   });
 
+  it("marks a single backspace deletion", () => {
+    const editor = track("<p>hello world</p>");
+    editor.chain().focus("end").run();
+    const pos = editor.state.selection.from;
+    editor.chain().focus().deleteRange({ from: pos - 1, to: pos }).run();
+    const html = editor.getHTML();
+    expect(html).toContain("dt-deletion");
+    expect(editorPlainText(editor)).toBe("hello world");
+  });
+
+  it("marks consecutive backspace deletions as one region", () => {
+    const editor = track("<p>hello world</p>");
+    editor.chain().focus("end").run();
+    for (let i = 0; i < 6; i++) {
+      const pos = editor.state.selection.from;
+      editor.chain().focus().deleteRange({ from: pos - 1, to: pos }).run();
+    }
+    const html = editor.getHTML();
+    expect(html).toContain("dt-deletion");
+    expect(editorPlainText(editor)).toBe("hello world");
+    const markIds = [
+      ...html.matchAll(/data-change-id="([^"]+)"/g),
+    ].map((m) => m[1]);
+    const delIds = new Set(markIds);
+    expect(delIds.size).toBe(1);
+  });
+
+  it("undoes consecutive backspace deletions without losing struck text", () => {
+    const editor = track("<p>hello world</p>");
+    editor.chain().focus("end").run();
+    for (let i = 0; i < 6; i++) {
+      const pos = editor.state.selection.from;
+      editor.chain().focus().deleteRange({ from: pos - 1, to: pos }).run();
+    }
+    expect(editor.getHTML()).toContain("dt-deletion");
+    editor.chain().focus().undo().run();
+    expect(editorPlainText(editor)).toContain("world");
+    expect(countSubstring(editorPlainText(editor), "world")).toBe(1);
+  });
+
   it("re-enabling tracking preserves existing marks and tracks new edits", () => {
     const editor = track("<p>Start</p>", false);
     editor.chain().focus("end").insertContent(" one").run();

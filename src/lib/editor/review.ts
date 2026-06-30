@@ -132,7 +132,6 @@ export function applyChangeInEditor(
 
   return editor
     .chain()
-    .focus()
     .command(({ tr, state, dispatch }) => {
       const ranges: { from: number; to: number }[] = [];
 

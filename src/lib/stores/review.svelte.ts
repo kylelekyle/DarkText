@@ -49,6 +49,17 @@ export class ReviewStore {
     this.getEditor = getter;
   }
 
+  /** Re-apply tracking flag and reconcile the panel when a new editor instance mounts. */
+  attachEditor(editor: Editor | null) {
+    if (!editor || editor.isDestroyed) return;
+    setTrackChangesEnabled(editor, this.trackChanges);
+    this.syncCommentMarksFromEditor(editor);
+    if (this.trackChanges || this.chapterComments.changes.length > 0) {
+      const changes = syncChangesFromEditor(editor, this.chapterComments.changes);
+      this.chapterComments = { ...this.chapterComments, changes };
+    }
+  }
+
   bindReviewNames(getter: () => { author: string; reviewer: string }) {
     this.getAuthorName = () => getter().author;
     this.getReviewerName = () => getter().reviewer;
@@ -95,8 +106,13 @@ export class ReviewStore {
   }
 
   toggleTrackChanges() {
+    const editor = this.getEditor();
+    if (this.trackChanges && editor) {
+      this.syncChangesPanelFromEditor(editor);
+      void this.flushComments();
+    }
     this.trackChanges = !this.trackChanges;
-    setTrackChangesEnabled(this.getEditor(), this.trackChanges);
+    setTrackChangesEnabled(editor, this.trackChanges);
     this.toast(this.trackChanges ? "Track changes on" : "Track changes off");
   }
 
@@ -347,6 +363,33 @@ export class ReviewStore {
   }
 
   async resolveThread(threadId: string) {
+    const thread = this.chapterComments.threads.find((t) => t.id === threadId);
+    const editor = this.getEditor();
+    if (editor && thread) {
+      editor
+        .chain()
+        .command(({ tr, state, dispatch }) => {
+          state.doc.descendants((node, pos) => {
+            if (!node.isText) return;
+            for (const mark of node.marks) {
+              if (
+                mark.type.name === "comment" &&
+                mark.attrs.markId === thread.markId
+              ) {
+                tr.removeMark(pos, pos + node.nodeSize, mark.type);
+              }
+            }
+          });
+          if (dispatch) dispatch(tr);
+          return true;
+        })
+        .run();
+      const html = editor.getHTML();
+      chapterStore.pendingHtml = html;
+      chapterStore.activeChapterHtml = html;
+      chapterStore.saveStatus = "unsaved";
+      void chapterStore.flushSave();
+    }
     this.chapterComments = {
       ...this.chapterComments,
       threads: this.chapterComments.threads.map((t) =>
@@ -370,7 +413,6 @@ export class ReviewStore {
     chapterStore.pendingHtml = html;
     chapterStore.activeChapterHtml = html;
     chapterStore.saveStatus = "unsaved";
-    chapterStore.editorRevision++;
 
     this.chapterComments = {
       ...this.chapterComments,
@@ -408,7 +450,6 @@ export class ReviewStore {
     chapterStore.pendingHtml = html;
     chapterStore.activeChapterHtml = html;
     chapterStore.saveStatus = "unsaved";
-    chapterStore.editorRevision++;
 
     const resolved = action === "accept" ? "accepted" : "rejected";
     const pendingIds = new Set(pending.map((c) => c.markId));
@@ -470,6 +511,11 @@ export class ReviewStore {
       if (!chapterStore.isOpenGeneration(gen)) return false;
       this.chapterComments = comments;
       this.syncCommentMarksFromEditor();
+      const editor = this.getEditor();
+      if (editor) {
+        const changes = syncChangesFromEditor(editor, comments.changes);
+        this.chapterComments = { ...this.chapterComments, changes };
+      }
       return true;
     } catch (e) {
       if (chapterStore.isOpenGeneration(gen)) {

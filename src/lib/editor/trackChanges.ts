@@ -1,7 +1,7 @@
 import type { Editor } from "@tiptap/core";
 import { Extension } from "@tiptap/core";
 import { Fragment, type MarkType, type Node as PMNode, type Slice } from "@tiptap/pm/model";
-import { Plugin, PluginKey, type Transaction } from "@tiptap/pm/state";
+import { Plugin, PluginKey, TextSelection, type Transaction } from "@tiptap/pm/state";
 import { ChangeSet } from "@tiptap/pm/changeset";
 
 const TRACK_META = "trackChanges";
@@ -43,6 +43,28 @@ function addDeletionMarks(
     }
   });
   return Fragment.fromArray(out);
+}
+
+/** Reuse an adjacent deletion mark when extending a backspace/delete region. */
+function adjacentDeletionMarkId(
+  doc: PMNode,
+  pos: number,
+  deletion: MarkType,
+): string | null {
+  const $pos = doc.resolve(pos);
+  const before = $pos.nodeBefore;
+  if (before?.isText) {
+    const mark = before.marks.find((m) => m.type === deletion);
+    const id = mark?.attrs.markId as string | null | undefined;
+    if (id) return id;
+  }
+  const after = $pos.nodeAfter;
+  if (after?.isText) {
+    const mark = after.marks.find((m) => m.type === deletion);
+    const id = mark?.attrs.markId as string | null | undefined;
+    if (id) return id;
+  }
+  return null;
 }
 
 function markInsertionRange(
@@ -87,6 +109,7 @@ export const TrackChangesPlugin = Extension.create({
           let tr = newState.tr;
           let modified = false;
           let curDoc = oldState.doc;
+          let cursorBeforeDeletion: number | null = null;
 
           for (const transaction of transactions) {
             if (!transaction.docChanged || !transaction.doc) continue;
@@ -110,13 +133,22 @@ export const TrackChangesPlugin = Extension.create({
               const deletedSlice = beforeDoc.slice(change.fromA, change.toA);
               if (!sliceHasNonDeletionText(deletedSlice, deletionType)) continue;
               const insertPos = tr.mapping.map(change.fromB, -1);
-              const delMarkId = crypto.randomUUID();
+              const adjacentId = adjacentDeletionMarkId(
+                tr.doc,
+                insertPos,
+                deletionType,
+              );
+              const delMarkId = adjacentId ?? crypto.randomUUID();
               const marked = addDeletionMarks(
                 deletedSlice.content,
                 deletionType,
                 delMarkId,
               );
               tr = tr.insert(insertPos, marked);
+              cursorBeforeDeletion =
+                cursorBeforeDeletion === null
+                  ? insertPos
+                  : Math.min(cursorBeforeDeletion, insertPos);
               modified = true;
             }
 
@@ -139,6 +171,13 @@ export const TrackChangesPlugin = Extension.create({
                 modified = true;
               }
             }
+          }
+
+          if (modified && cursorBeforeDeletion !== null) {
+            const $pos = tr.doc.resolve(
+              Math.min(cursorBeforeDeletion, tr.doc.content.size),
+            );
+            tr = tr.setSelection(TextSelection.near($pos, -1));
           }
 
           return modified ? tr.setMeta(TRACK_META, true) : null;

@@ -91,23 +91,25 @@
   });
 
   $effect(() => {
-    if (!editor) return;
-    if (chapterId !== mountedChapterId || editorRevision !== mountedRevision) {
-      if (editor.isDestroyed) return;
-      editor.commands.setContent(html, { emitUpdate: false });
-      mountedChapterId = chapterId;
-      mountedRevision = editorRevision;
-      if (pane === "primary") {
-        reviewStore.syncCommentMarksFromEditor(editor);
-      }
-      if (chapterId && pane === "primary") {
-        const ed = editor;
-        requestAnimationFrame(() => {
-          if (!ed.isDestroyed && chapterId === mountedChapterId) {
-            ed.commands.focus("end");
-          }
-        });
-      }
+    if (!editor || editor.isDestroyed) return;
+    const chapterChanged = chapterId !== mountedChapterId;
+    const revisionChanged = editorRevision !== mountedRevision;
+    if (!chapterChanged && !revisionChanged) return;
+
+    editor.commands.setContent(html, { emitUpdate: false });
+    mountedChapterId = chapterId;
+    mountedRevision = editorRevision;
+    if (pane === "primary") {
+      reviewStore.syncCommentMarksFromEditor(editor);
+    }
+    // Only jump to end when switching chapters — not after accept/reject revision bumps.
+    if (chapterChanged && chapterId && pane === "primary") {
+      const ed = editor;
+      requestAnimationFrame(() => {
+        if (!ed.isDestroyed && chapterId === mountedChapterId) {
+          ed.commands.focus("end");
+        }
+      });
     }
   });
 
@@ -341,7 +343,8 @@
     background: transparent;
   }
 
-  .editor-mount:not(.show-edits):not(.track-on) :global(.dt-deletion) {
+  /* Hide struck-through deletions unless actively tracking (Word hides them when off). */
+  .editor-mount:not(.track-on) :global(.dt-deletion) {
     display: none;
   }
 
@@ -350,13 +353,16 @@
     text-decoration: none;
   }
 
-  .editor-mount.show-edits :global(.dt-insertion),
+  .editor-mount:not(.track-on) :global(.dt-insertion) {
+    background: transparent;
+    border-bottom: none;
+  }
+
   .editor-mount.track-on :global(.dt-insertion) {
     background: rgba(74, 158, 114, 0.18);
     border-bottom: 1px solid var(--status-final);
   }
 
-  .editor-mount.show-edits :global(.dt-deletion),
   .editor-mount.track-on :global(.dt-deletion) {
     background: rgba(196, 92, 92, 0.14);
     text-decoration: line-through;

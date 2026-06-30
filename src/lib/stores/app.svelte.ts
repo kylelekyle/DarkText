@@ -332,7 +332,10 @@ class AppStore {
 
   setEditor(editor: Editor | null) {
     this.editorRef = editor;
-    if (editor) this.scheduleSearchJumpApply();
+    if (editor) {
+      reviewStore.attachEditor(editor);
+      this.scheduleSearchJumpApply();
+    }
   }
 
   setSplitEditor(editor: Editor | null) {
