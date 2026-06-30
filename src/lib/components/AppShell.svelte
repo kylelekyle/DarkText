@@ -294,14 +294,14 @@
       </div>
     </main>
 
-    {#if app.mode === "editor" && reviewStore.showReviewPanel && !app.focusMode}
+    {#if app.mode === "editor" && app.showReviewPanel && !app.focusMode}
       <aside class="review-slot">
         <div class="review-header">
           <span class="review-title">Review</span>
           <button
             class="review-close"
             title="Close review panel"
-            onclick={() => reviewStore.toggleReviewPanel()}
+            onclick={() => app.toggleReviewPanel()}
           >
             ×
           </button>

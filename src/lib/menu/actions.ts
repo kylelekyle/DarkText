@@ -13,7 +13,7 @@ import {
 } from "$lib/editor/insert";
 import { setParagraphAlignment } from "$lib/editor/align";
 import { toggleStrikethrough } from "$lib/editor/formatActions";
-import { reviewStore } from "$lib/stores/review.svelte";
+
 import { shortcutKeysForMenu } from "$lib/shortcuts/registry";
 import { formatError } from "$lib/utils/errors";
 import type { ChapterSection, MenuAction } from "$lib/types";
@@ -257,7 +257,7 @@ export function buildMenuActions(ctx: ActionContext): MenuAction[] {
       group: "Review",
       run: () => {
         app.setMode("editor");
-        reviewStore.openReviewPanel();
+        app.openReviewPanel();
       },
     },
     // Book
@@ -301,7 +301,7 @@ export function buildMenuActions(ctx: ActionContext): MenuAction[] {
       group: "View",
       run: () => {
         app.setMode("editor");
-        reviewStore.openReviewPanel();
+        app.openReviewPanel();
       },
     },
     { id: "view.edits", label: "Show edits & comments", group: "View", run: () => app.toggleShowEdits() },

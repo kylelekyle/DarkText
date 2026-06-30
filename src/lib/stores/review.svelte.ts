@@ -27,7 +27,6 @@ export class ReviewStore {
   commentMarkIdsInDoc = $state<ReadonlySet<string>>(new Set());
   trackChanges = $state(false);
   showEditsComments = $state(true);
-  showReviewPanel = $state(false);
   pendingCommentAnchor = $state("");
   pendingCommentMarkId = $state("");
 
@@ -100,7 +99,6 @@ export class ReviewStore {
     this.commentMarkIdsInDoc = new Set();
     this.trackChanges = false;
     setTrackChangesEnabled(this.getEditor(), false);
-    this.showReviewPanel = false;
     this.pendingCommentAnchor = "";
     this.pendingCommentMarkId = "";
   }
@@ -127,21 +125,8 @@ export class ReviewStore {
     this.showEditsComments = !this.showEditsComments;
   }
 
-  openReviewPanel() {
-    this.showReviewPanel = true;
-  }
-
-  toggleReviewPanel() {
-    this.showReviewPanel = !this.showReviewPanel;
-  }
-
-  setMode(mode: AppMode) {
+  setMode(_mode: AppMode) {
     setTrackChangesEnabled(this.getEditor(), this.trackChanges);
-    if (mode === "editor") {
-      this.showReviewPanel = true;
-    } else {
-      this.showReviewPanel = false;
-    }
   }
 
   cancelPendingComment() {

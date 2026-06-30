@@ -84,6 +84,7 @@ class AppStore {
   showQuickActions = $state(false);
   showMindMap = $state(false);
   showReadThrough = $state(false);
+  showReviewPanel = $state(false);
   readThroughFinalOnly = $state(true);
   pendingSearchJump = $state<SearchJumpTarget | null>(null);
   libraryReviewTotals = $state<{ openComments: number; pendingChanges: number } | null>(
@@ -230,12 +231,6 @@ class AppStore {
   }
   get showEditsComments() {
     return reviewStore.showEditsComments;
-  }
-  get showReviewPanel() {
-    return reviewStore.showReviewPanel;
-  }
-  set showReviewPanel(v: boolean) {
-    reviewStore.showReviewPanel = v;
   }
   get pendingCommentAnchor() {
     return reviewStore.pendingCommentAnchor;
@@ -708,12 +703,17 @@ class AppStore {
     await libraryStore.refreshCharacters();
   }
 
+  openReviewPanel() {
+    this.showReviewPanel = true;
+  }
+
   toggleReviewPanel() {
-    reviewStore.toggleReviewPanel();
+    this.showReviewPanel = !this.showReviewPanel;
   }
 
   setMode(mode: AppMode) {
     this.mode = mode;
+    this.showReviewPanel = mode === "editor";
     reviewStore.setMode(mode);
   }
 
