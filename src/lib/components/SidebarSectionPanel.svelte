@@ -239,7 +239,17 @@
   function onItemClick(e: MouseEvent, id: string) {
     if (Date.now() < suppressClickUntil) return;
     const result = handleSidebarChapterClick(e, id, items, sidebarSelection);
+    if (result.openInSplit) {
+      void app.openChapterInSplit(result.chapterId, section);
+      return;
+    }
     if (result.open) void app.openChapter(result.chapterId, section);
+  }
+
+  function onItemAuxClick(e: MouseEvent, id: string) {
+    if (e.button !== 1) return;
+    e.preventDefault();
+    void app.openChapterInSplit(id, section);
   }
 
   function deleteSelected() {
@@ -339,12 +349,14 @@
         class="list-item"
         class:draggable={!isFiltering}
         class:active={app.activeChapterId === item.id && app.activeSection === section}
+        class:split-active={app.splitViewEnabled && app.splitChapterId === item.id && app.splitSection === section}
         class:selected={sidebarSelection.section === section && sidebarSelection.isSelected(item.id)}
         class:keyboard-focus={listFocusId === item.id}
         class:dragging={draggingId === item.id}
         data-chapter-id={item.id}
         style:transform={itemTransform(index, item.id, smoothGap)}
         onpointerdown={(e) => onRowPointerDown(e, item.id)}
+        onauxclick={(e) => onItemAuxClick(e, item.id)}
         oncontextmenu={(e) => onItemContextMenu?.(e, item)}
       >
         {#if !isFiltering}
@@ -438,6 +450,11 @@
 
   .list-item.active {
     background: var(--accent-subtle);
+  }
+
+  .list-item.split-active:not(.active) {
+    background: rgba(201, 165, 92, 0.08);
+    box-shadow: inset -2px 0 0 var(--accent-dim);
   }
 
   .list-item.selected {

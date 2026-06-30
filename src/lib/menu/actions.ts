@@ -268,6 +268,14 @@ export function buildMenuActions(ctx: ActionContext): MenuAction[] {
 
     // View
     { id: "view.sidebar", label: "Toggle Sidebar", shortcut: menuShortcut("view.sidebar"), group: "View", run: () => { app.sidebarCollapsed = !app.sidebarCollapsed; } },
+    {
+      id: "view.split",
+      label: app.splitViewEnabled ? "Close Split View" : "Split View",
+      shortcut: menuShortcut("view.split"),
+      group: "View",
+      disabled: !hasLibrary || app.focusMode,
+      run: () => void app.toggleSplitView(),
+    },
     { id: "view.mindmap", label: "Mind-map", shortcut: menuShortcut("view.mindmap"), group: "View", run: () => app.toggleMindMap() },
     {
       id: "view.readthrough",
@@ -344,7 +352,7 @@ export const MENU_STRUCTURE: { label: string; group: string; items?: string[] }[
   {
     label: "View",
     group: "View",
-    items: ["view.sidebar", "view.mindmap", "view.readthrough", "view.spell", "view.focus", "view.author", "view.editor", "view.edits"],
+    items: ["view.sidebar", "view.split", "view.mindmap", "view.readthrough", "view.spell", "view.focus", "view.author", "view.editor", "view.edits"],
   },
   {
     label: "Settings",

@@ -22,4 +22,12 @@ describe("libraryPrefs", () => {
       defaultAppSettings,
     );
   });
+
+  it("migrates legacy pt defaultFontSize from library preferences", () => {
+    const merged = settingsFromPreferences(
+      { defaultFontSize: "12pt" },
+      defaultAppSettings,
+    );
+    expect(merged.defaultFontSize).toBe("12");
+  });
 });

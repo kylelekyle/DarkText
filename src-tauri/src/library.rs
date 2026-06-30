@@ -1,9 +1,12 @@
 use crate::compile::{
     load_final_chapters, read_book_settings, write_book_settings, BookSettings,
 };
+use crate::migrate::migrate_library_if_needed;
 use crate::models::{ChapterMeta, LibraryManifest};
+use crate::paths::{LayoutVersion, LibraryPaths, MANIFEST_VERSION_V2};
+use crate::section_index::{read_section_index, write_section_index};
 use chrono::Utc;
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::Mutex;
@@ -20,10 +23,6 @@ where
     f()
 }
 
-/// The single library the frontend currently has open. Every command that
-/// takes a `library_path` must match this (via `require_active_library`) so
-/// a buggy or compromised frontend can't operate on an arbitrary directory
-/// just by passing a different path string.
 static ACTIVE_LIBRARY: Mutex<Option<PathBuf>> = Mutex::new(None);
 
 pub(crate) fn set_active_library(path: &Path) -> Result<(), String> {
@@ -103,13 +102,11 @@ pub fn atomic_write(path: &Path, content: &[u8]) -> Result<(), String> {
     Ok(())
 }
 
-/// Reads and parses a JSON file. Errors if the file is missing or invalid.
 pub fn read_json<T: serde::de::DeserializeOwned>(path: &Path) -> Result<T, String> {
     let content = fs::read_to_string(path).map_err(|e| e.to_string())?;
     serde_json::from_str(&content).map_err(|e| e.to_string())
 }
 
-/// Reads and parses a JSON file, returning `T::default()` if it doesn't exist yet.
 pub fn read_json_or_default<T: serde::de::DeserializeOwned + Default>(
     path: &Path,
 ) -> Result<T, String> {
@@ -119,7 +116,6 @@ pub fn read_json_or_default<T: serde::de::DeserializeOwned + Default>(
     read_json(path)
 }
 
-/// Serializes a value as pretty JSON and writes it atomically.
 pub fn write_json<T: serde::Serialize>(path: &Path, value: &T) -> Result<(), String> {
     let json = serde_json::to_string_pretty(value).map_err(|e| e.to_string())?;
     atomic_write(path, json.as_bytes())
@@ -132,12 +128,14 @@ pub(crate) const CHARACTERS: &str = "characters";
 pub(crate) const RESEARCH_TEMPLATE: &str = "<h2>Research Topic</h2><p><strong>Source:</strong> </p><p><strong>Summary:</strong></p><p></p><p><strong>Key points:</strong></p><ul><li></li></ul><p><strong>Links &amp; references:</strong></p><p></p>";
 pub(crate) const CHARACTER_TEMPLATE: &str = "<h2>Character Name</h2><p><strong>Role:</strong> </p><p><strong>Age / Appearance:</strong></p><p></p><p><strong>Personality:</strong></p><p></p><p><strong>Background:</strong></p><p></p><p><strong>Goals &amp; motivation:</strong></p><p></p><p><strong>Notes:</strong></p><p></p>";
 
-fn library_manifest_path(library_path: &Path) -> PathBuf {
-    library_path.join("library.json")
+pub fn library_paths(library_path: &Path) -> Result<LibraryPaths, String> {
+    LibraryPaths::detect(library_path)
 }
 
 pub fn section_dir(library_path: &Path, section: &str) -> PathBuf {
-    library_path.join(section)
+    library_paths(library_path)
+        .map(|p| p.content_dir(section))
+        .unwrap_or_else(|_| library_path.join(section))
 }
 
 pub fn meta_path(dir: &Path, id: &str) -> PathBuf {
@@ -148,15 +146,14 @@ pub(crate) fn html_path(dir: &Path, id: &str) -> PathBuf {
     dir.join(format!("{id}.html"))
 }
 
-/// Ensures only the manuscript folder exists. Research, characters, exports, and
-/// fonts folders are created lazily when those features are first used.
 pub(crate) fn ensure_library_structure(library_path: &Path) -> Result<(), String> {
-    fs::create_dir_all(section_dir(library_path, CHAPTERS)).map_err(|e| e.to_string())?;
-    Ok(())
+    let paths = LibraryPaths::new_v2(library_path.to_path_buf());
+    paths.ensure_v2_structure()
 }
 
 pub fn read_manifest(library_path: &Path) -> Result<LibraryManifest, String> {
-    let manifest_path = library_manifest_path(library_path);
+    let paths = library_paths(library_path)?;
+    let manifest_path = paths.library_manifest();
     if !manifest_path.exists() {
         return Err("Not a valid Library: library.json not found".to_string());
     }
@@ -164,15 +161,54 @@ pub fn read_manifest(library_path: &Path) -> Result<LibraryManifest, String> {
 }
 
 pub(crate) fn write_manifest(library_path: &Path, manifest: &LibraryManifest) -> Result<(), String> {
-    write_json(&library_manifest_path(library_path), manifest)
+    let paths = library_paths(library_path)?;
+    write_json(&paths.library_manifest(), manifest)
 }
 
 pub(crate) fn read_meta_file(path: &Path) -> Result<ChapterMeta, String> {
     read_json(path)
 }
 
-pub fn load_section_chapters(library_path: &Path, section: &str) -> Result<Vec<ChapterMeta>, String> {
-    let dir = section_dir(library_path, section);
+pub fn read_chapter_meta(
+    library_path: &Path,
+    section: &str,
+    id: &str,
+) -> Result<ChapterMeta, String> {
+    validate_chapter_id(id)?;
+    let paths = library_paths(library_path)?;
+    match paths.layout() {
+        LayoutVersion::Legacy => read_meta_file(&paths.meta_json(section, id)),
+        LayoutVersion::V2 => {
+            if section == CHAPTERS {
+                let manifest = read_manifest(library_path)?;
+                manifest
+                    .chapters
+                    .into_iter()
+                    .find(|c| c.id == id)
+                    .ok_or_else(|| "Chapter not found".to_string())
+            } else {
+                let items = read_section_index(library_path, section)?;
+                items
+                    .into_iter()
+                    .find(|c| c.id == id)
+                    .ok_or_else(|| "Chapter not found".to_string())
+            }
+        }
+    }
+}
+
+pub fn chapter_exists(library_path: &Path, section: &str, id: &str) -> bool {
+    library_paths(library_path)
+        .map(|p| p.chapter_html(section, id).exists())
+        .unwrap_or(false)
+}
+
+pub fn load_section_chapters_legacy(
+    library_path: &Path,
+    section: &str,
+) -> Result<Vec<ChapterMeta>, String> {
+    let paths = library_paths(library_path)?;
+    let dir = paths.legacy_content_dir(section);
     if !dir.exists() {
         return Ok(vec![]);
     }
@@ -196,7 +232,6 @@ pub fn load_section_chapters(library_path: &Path, section: &str) -> Result<Vec<C
             && !file_name.ends_with(".meta.json")
             && !file_name.ends_with(".comments.json")
         {
-            // Migrate legacy .json sidecars from older layouts (not comments or other sidecars)
             let meta = read_meta_file(&path)?;
             if seen_ids.contains(&meta.id) {
                 let _ = fs::remove_file(&path);
@@ -216,8 +251,79 @@ pub fn load_section_chapters(library_path: &Path, section: &str) -> Result<Vec<C
     Ok(chapters)
 }
 
-fn load_chapters_from_disk(library_path: &Path) -> Result<Vec<ChapterMeta>, String> {
-    load_section_chapters(library_path, CHAPTERS)
+pub fn load_section_chapters(library_path: &Path, section: &str) -> Result<Vec<ChapterMeta>, String> {
+    let paths = library_paths(library_path)?;
+    if paths.layout() == LayoutVersion::Legacy {
+        return load_section_chapters_legacy(library_path, section);
+    }
+
+    let mut items = read_section_index(library_path, section)?;
+    items.retain(|c| paths.chapter_html(section, &c.id).exists());
+    items.sort_by_key(|c| c.order);
+    Ok(items)
+}
+
+fn reconcile_manifest_chapters(library_path: &Path, manifest: &mut LibraryManifest) -> Result<(), String> {
+    let paths = library_paths(library_path)?;
+    if paths.layout() == LayoutVersion::Legacy {
+        manifest.chapters = load_section_chapters_legacy(library_path, CHAPTERS)?;
+        return Ok(());
+    }
+
+    let content_dir = paths.content_dir(CHAPTERS);
+    let mut by_id: HashMap<String, ChapterMeta> = manifest
+        .chapters
+        .drain(..)
+        .map(|c| (c.id.clone(), c))
+        .collect();
+
+    if content_dir.exists() {
+        let mut orphans: Vec<(String, std::time::SystemTime)> = Vec::new();
+        for entry in fs::read_dir(&content_dir).map_err(|e| e.to_string())? {
+            let entry = entry.map_err(|e| e.to_string())?;
+            let path = entry.path();
+            if path.extension().and_then(|e| e.to_str()) != Some("html") {
+                continue;
+            }
+            let id = path
+                .file_stem()
+                .and_then(|s| s.to_str())
+                .unwrap_or("")
+                .to_string();
+            if !by_id.contains_key(&id) {
+                let modified = entry
+                    .metadata()
+                    .map_err(|e| e.to_string())?
+                    .modified()
+                    .unwrap_or(std::time::SystemTime::UNIX_EPOCH);
+                orphans.push((id, modified));
+            }
+        }
+        orphans.sort_by_key(|(_, t)| *t);
+        let base_order = by_id.len() as u32;
+        for (i, (id, _)) in orphans.into_iter().enumerate() {
+            by_id.insert(
+                id.clone(),
+                ChapterMeta {
+                    id,
+                    title: "Recovered".to_string(),
+                    status: "draft".to_string(),
+                    order: base_order + i as u32,
+                    updated_at: Utc::now().to_rfc3339(),
+                    word_count: 0,
+                    char_count: 0,
+                },
+            );
+        }
+    }
+
+    manifest.chapters = by_id.into_values().collect();
+    manifest.chapters.retain(|c| paths.chapter_html(CHAPTERS, &c.id).exists());
+    manifest.chapters.sort_by_key(|c| c.order);
+    for (i, ch) in manifest.chapters.iter_mut().enumerate() {
+        ch.order = i as u32;
+    }
+    Ok(())
 }
 
 pub(crate) fn write_chapter_files(
@@ -231,10 +337,27 @@ pub(crate) fn write_chapter_files(
     let (words, chars) = crate::compile::stats_from_html(html);
     meta.word_count = words;
     meta.char_count = chars;
-    let dir = section_dir(library_path, section);
+    let paths = library_paths(library_path)?;
+    let dir = paths.content_dir(section);
     fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
-    write_json(&meta_path(&dir, &meta.id), &meta)?;
-    atomic_write(&html_path(&dir, &meta.id), html.as_bytes())?;
+
+    match paths.layout() {
+        LayoutVersion::Legacy => {
+            write_json(&paths.meta_json(section, &meta.id), &meta)?;
+        }
+        LayoutVersion::V2 if section != CHAPTERS => {
+            let mut items = read_section_index(library_path, section)?;
+            if let Some(existing) = items.iter_mut().find(|c| c.id == meta.id) {
+                *existing = meta.clone();
+            } else {
+                items.push(meta.clone());
+            }
+            write_section_index(library_path, section, &items)?;
+        }
+        LayoutVersion::V2 => {}
+    }
+
+    atomic_write(&paths.chapter_html(section, &meta.id), html.as_bytes())?;
     let _ = crate::search_index::upsert_search_entry(library_path, section, &meta, html);
     Ok(meta)
 }
@@ -245,8 +368,22 @@ pub(crate) fn write_chapter_meta_only(
     meta: &ChapterMeta,
 ) -> Result<(), String> {
     validate_chapter_id(&meta.id)?;
-    let dir = section_dir(library_path, section);
-    write_json(&meta_path(&dir, &meta.id), meta)
+    let paths = library_paths(library_path)?;
+    match paths.layout() {
+        LayoutVersion::Legacy => {
+            write_json(&paths.meta_json(section, &meta.id), meta)
+        }
+        LayoutVersion::V2 if section == CHAPTERS => Ok(()),
+        LayoutVersion::V2 => {
+            let mut items = read_section_index(library_path, section)?;
+            if let Some(existing) = items.iter_mut().find(|c| c.id == meta.id) {
+                *existing = meta.clone();
+            } else {
+                return Err("Chapter not found".to_string());
+            }
+            write_section_index(library_path, section, &items)
+        }
+    }
 }
 
 pub(crate) fn resolve_section(section: Option<String>) -> Result<String, String> {
@@ -265,7 +402,10 @@ pub(crate) fn is_sidecar_section(section: &str) -> bool {
 pub(crate) fn reload_library_manifest(library_path: &Path, path: String) -> Result<LibraryManifest, String> {
     let mut manifest = read_manifest(library_path)?;
     manifest.path = path;
-    manifest.chapters = load_chapters_from_disk(library_path)?;
+    reconcile_manifest_chapters(library_path, &mut manifest)?;
+    if library_paths(library_path)?.layout() == LayoutVersion::V2 {
+        write_manifest(library_path, &manifest)?;
+    }
     Ok(manifest)
 }
 
@@ -284,17 +424,44 @@ pub(crate) fn reorder_section(
         }
     }
 
-    let dir = section_dir(library_path, section);
+    let paths = library_paths(library_path)?;
+    let now = Utc::now().to_rfc3339();
+
+    if paths.layout() == LayoutVersion::Legacy {
+        let dir = paths.content_dir(section);
+        for (order, id) in chapter_ids.iter().enumerate() {
+            validate_chapter_id(id)?;
+            let meta_file = meta_path(&dir, id);
+            if !meta_file.exists() {
+                return Err(format!("Item not found: {id}"));
+            }
+            let mut meta = read_meta_file(&meta_file)?;
+            meta.order = order as u32;
+            meta.updated_at = now.clone();
+            write_chapter_meta_only(library_path, section, &meta)?;
+        }
+        return Ok(());
+    }
+
+    let mut items: Vec<ChapterMeta> = Vec::new();
     for (order, id) in chapter_ids.iter().enumerate() {
         validate_chapter_id(id)?;
-        let meta_file = meta_path(&dir, id);
-        if !meta_file.exists() {
-            return Err(format!("Item not found: {id}"));
-        }
-        let mut meta = read_meta_file(&meta_file)?;
+        let mut meta = existing
+            .iter()
+            .find(|c| &c.id == id)
+            .cloned()
+            .ok_or_else(|| format!("Item not found: {id}"))?;
         meta.order = order as u32;
-        meta.updated_at = Utc::now().to_rfc3339();
-        write_chapter_meta_only(library_path, section, &meta)?;
+        meta.updated_at = now.clone();
+        items.push(meta);
+    }
+
+    if section == CHAPTERS {
+        let mut manifest = read_manifest(library_path)?;
+        manifest.chapters = items;
+        write_manifest(library_path, &manifest)?;
+    } else {
+        write_section_index(library_path, section, &items)?;
     }
     Ok(())
 }
@@ -302,34 +469,33 @@ pub(crate) fn reorder_section(
 #[tauri::command]
 pub fn create_library(path: String, name: String) -> Result<LibraryManifest, String> {
     let library_path = PathBuf::from(&path);
-    if library_manifest_path(&library_path).exists() {
+    if LibraryPaths::is_valid_library(&library_path) {
         return Err("A library already exists at this path. Use Open Library instead.".into());
     }
-    ensure_library_structure(&library_path)?;
+    let paths = LibraryPaths::new_v2(library_path.clone());
+    paths.ensure_v2_structure()?;
 
     let manifest = LibraryManifest {
         name,
-        version: 1,
+        version: MANIFEST_VERSION_V2,
         path: path.clone(),
         chapters: vec![],
     };
 
-    write_manifest(&library_path, &manifest)?;
+    write_json(&paths.library_manifest(), &manifest)?;
     set_active_library(&library_path)?;
     Ok(manifest)
 }
 
 #[tauri::command]
 pub fn is_library_path(path: String) -> bool {
-    let library_path = PathBuf::from(path);
-    library_path.is_dir() && library_manifest_path(&library_path).is_file()
+    LibraryPaths::is_valid_library(Path::new(&path))
 }
 
-/// Moves a library folder to the system Recycle Bin. Does not require an open library.
 #[tauri::command]
 pub fn trash_library_folder(path: String) -> Result<(), String> {
     let library_path = PathBuf::from(&path);
-    if !library_manifest_path(&library_path).is_file() {
+    if !LibraryPaths::is_valid_library(&library_path) {
         return Err("Not a valid library folder".into());
     }
     let canonical = fs::canonicalize(&library_path)
@@ -344,31 +510,23 @@ pub fn trash_library_folder(path: String) -> Result<(), String> {
 #[tauri::command]
 pub fn open_library(path: String) -> Result<LibraryManifest, String> {
     let library_path = PathBuf::from(&path);
-    let manifest = reload_library_manifest(&library_path, path)?;
-    set_active_library(&library_path)?;
-    Ok(manifest)
+    with_library_lock(|| {
+        migrate_library_if_needed(&library_path)?;
+        let manifest = reload_library_manifest(&library_path, path)?;
+        set_active_library(&library_path)?;
+        Ok(manifest)
+    })
 }
 
 #[tauri::command]
 pub fn save_library_manifest(manifest: LibraryManifest) -> Result<LibraryManifest, String> {
     let path = PathBuf::from(&manifest.path);
     require_active_library(&path)?;
-    if !library_manifest_path(&path).exists() {
+    if !library_paths(&path)?.library_manifest().exists() {
         return Err("Library not found".into());
     }
     with_library_lock(|| {
         write_manifest(&path, &manifest)?;
-
-        let dir = section_dir(&path, CHAPTERS);
-        for chapter in &manifest.chapters {
-            validate_chapter_id(&chapter.id)?;
-            let meta_file = meta_path(&dir, &chapter.id);
-            if meta_file.exists() {
-                let json = serde_json::to_string_pretty(chapter).map_err(|e| e.to_string())?;
-                atomic_write(&meta_file, json.as_bytes())?;
-            }
-        }
-
         Ok(manifest)
     })
 }
@@ -412,6 +570,7 @@ pub fn save_book_settings(library_path: String, settings: BookSettings) -> Resul
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::paths::{FOLDER_CHAPTERS, FOLDER_RESEARCH};
     use serial_test::serial;
     use std::fs;
     use uuid::Uuid;
@@ -464,7 +623,6 @@ mod tests {
         create_library(dir_a.to_string_lossy().to_string(), "A".to_string()).unwrap();
         create_library(dir_b.to_string_lossy().to_string(), "B".to_string()).unwrap();
 
-        // Creating B made it active; opening A should make A active again.
         open_library(dir_a.to_string_lossy().to_string()).unwrap();
 
         assert!(get_book_settings(dir_a.to_string_lossy().to_string()).is_ok());
@@ -493,7 +651,8 @@ mod tests {
         create_library(path.clone(), "Check".to_string()).unwrap();
         assert!(is_library_path(path.clone()));
 
-        fs::remove_file(library_manifest_path(&dir)).unwrap();
+        let paths = library_paths(&dir).unwrap();
+        fs::remove_file(paths.library_manifest()).unwrap();
         assert!(!is_library_path(path));
 
         let _ = fs::remove_dir_all(&dir);
@@ -501,15 +660,17 @@ mod tests {
 
     #[test]
     #[serial(active_library)]
-    fn create_library_only_creates_manifest_and_chapters_folder() {
+    fn create_library_only_creates_v2_structure() {
         let dir = temp_dir("minimal-create");
         let path = dir.as_path();
         create_library(dir.to_string_lossy().to_string(), "Minimal".to_string()).unwrap();
 
-        assert!(library_manifest_path(path).exists());
-        assert!(section_dir(path, CHAPTERS).is_dir());
-        assert!(!section_dir(path, RESEARCH).exists());
-        assert!(!section_dir(path, CHARACTERS).exists());
+        let paths = library_paths(path).unwrap();
+        assert!(paths.library_manifest().exists());
+        assert!(path.join(FOLDER_CHAPTERS).is_dir());
+        assert!(paths.config_dir().is_dir());
+        assert!(!path.join(FOLDER_RESEARCH).exists());
+        assert!(!path.join(crate::paths::FOLDER_CHARACTERS).exists());
         assert!(!crate::compile::exports_dir(path).exists());
         assert!(!crate::fonts::fonts_dir(path).exists());
 

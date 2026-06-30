@@ -4,7 +4,7 @@ export function formatError(err: unknown): string {
     return "No Final chapters to compile. Mark chapters as Final in the sidebar.";
   }
   if (raw.includes("library.json not found")) {
-    return "This folder is not a valid Library. Choose a folder containing library.json.";
+    return "This folder is not a valid Library. Choose a DarkText library folder.";
   }
   if (raw.includes("No chapters selected")) {
     return "Select at least one chapter to export.";

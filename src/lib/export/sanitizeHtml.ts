@@ -1,5 +1,7 @@
 /** Shared URL/path rules for library HTML (display, paste, export). */
 
+import { migrateLegacyFontSizesInHtml } from "$lib/utils/typography";
+
 const BLOCKED_SCHEME = /^(javascript|data|file|asset|blob|vbscript):/i;
 
 /** Library images are stored as `images/<filename>` with no traversal. */
@@ -115,5 +117,5 @@ export function prepareHtmlForPaste(html: string): {
 export function sanitizeHtmlForDisplay(html: string): string {
   const doc = new DOMParser().parseFromString(`<body>${html}</body>`, "text/html");
   scrubDocumentBody(doc);
-  return doc.body.innerHTML;
+  return migrateLegacyFontSizesInHtml(doc.body.innerHTML);
 }

@@ -2,6 +2,9 @@ mod comments;
 mod compile;
 mod fonts;
 mod mindmap;
+mod migrate;
+mod paths;
+mod section_index;
 
 mod models;
 mod library;

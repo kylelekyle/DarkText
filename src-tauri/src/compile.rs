@@ -1,4 +1,5 @@
-use crate::{atomic_write, load_section_chapters, read_manifest, section_dir, ChapterMeta, CHAPTERS};
+use crate::library::library_paths;
+use crate::{atomic_write, load_section_chapters, read_manifest, ChapterMeta, CHAPTERS};
 const RESEARCH: &str = "research";
 const CHARACTERS: &str = "characters";
 use std::fs;
@@ -87,11 +88,15 @@ impl Default for BookSettings {
 }
 
 pub fn book_settings_path(library_path: &Path) -> PathBuf {
-    library_path.join("book.json")
+    library_paths(library_path)
+        .map(|p| p.book_settings())
+        .unwrap_or_else(|_| library_path.join("book.json"))
 }
 
 pub fn exports_dir(library_path: &Path) -> PathBuf {
-    library_path.join("exports")
+    library_paths(library_path)
+        .map(|p| p.exports_dir())
+        .unwrap_or_else(|_| library_path.join("exports"))
 }
 
 pub fn read_book_settings(library_path: &Path) -> Result<BookSettings, String> {
@@ -128,7 +133,9 @@ pub fn read_section_html(
     chapter_id: &str,
     section: &str,
 ) -> Result<String, String> {
-    let path = section_dir(library_path, section).join(format!("{chapter_id}.html"));
+    let path = library_paths(library_path)
+        .map(|p| p.chapter_html(section, chapter_id))
+        .unwrap_or_else(|_| library_path.join(section).join(format!("{chapter_id}.html")));
     fs::read_to_string(&path).map_err(|e| e.to_string())
 }
 
@@ -178,9 +185,9 @@ pub fn marked_review_styles() -> &'static str {
 
 pub fn document_styles(style: &str) -> &'static str {
     match style {
-        "manuscript" => "body{font-family:'Times New Roman',Times,serif;font-size:12pt;line-height:2;max-width:6.5in;margin:1in auto;color:#111}\
-                         h1{font-size:18pt;text-align:center;margin:2em 0 1em;font-weight:normal}\
-                         h2{font-size:14pt;margin:1.5em 0 0.75em;font-weight:bold;page-break-before:always}\
+        "manuscript" => "body{font-family:'Times New Roman',Times,serif;font-size:12px;line-height:2;max-width:6.5in;margin:1in auto;color:#111}\
+                         h1{font-size:18px;text-align:center;margin:2em 0 1em;font-weight:normal}\
+                         h2{font-size:14px;margin:1.5em 0 0.75em;font-weight:bold;page-break-before:always}\
                          .author{text-align:center;color:#444;margin-bottom:2em}\
                          p{margin:0 0 0.5em;text-indent:0.5in}\
                          .research-section h2{page-break-before:auto;color:#555}",

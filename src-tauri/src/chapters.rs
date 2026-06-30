@@ -1,11 +1,12 @@
 use crate::compile::{html_to_text, load_final_chapters, read_book_settings, read_chapter_html};
 use crate::library::{
-    ensure_library_structure, html_path, is_sidecar_section, load_section_chapters, meta_path,
-    read_manifest, read_meta_file, reload_library_manifest, reorder_section, require_active_library,
-    resolve_section, section_dir, validate_chapter_id, validate_status, with_library_lock,
-    write_chapter_files, write_chapter_meta_only,
+    chapter_exists, ensure_library_structure, is_sidecar_section, library_paths,
+    load_section_chapters, read_chapter_meta, read_manifest, reload_library_manifest,
+    reorder_section, require_active_library, resolve_section, validate_chapter_id,
+    validate_status, with_library_lock, write_chapter_files, write_chapter_meta_only,
     write_manifest, CHARACTER_TEMPLATE, CHAPTERS, CHARACTERS, RESEARCH, RESEARCH_TEMPLATE,
 };
+use crate::section_index::write_section_index;
 use crate::models::{ChapterContent, ChapterMeta, LibraryImage, LibraryManifest};
 use chrono::Utc;
 use std::fs;
@@ -99,10 +100,10 @@ pub fn read_chapter(
     let path = PathBuf::from(&library_path);
     require_active_library(&path)?;
     let section = resolve_section(section)?;
-    let dir = section_dir(&path, &section);
+    let paths = library_paths(&path)?;
 
-    let html = read_html_capped(&html_path(&dir, &chapter_id))?;
-    let meta = read_meta_file(&meta_path(&dir, &chapter_id))?;
+    let html = read_html_capped(&paths.chapter_html(&section, &chapter_id))?;
+    let meta = read_chapter_meta(&path, &section, &chapter_id)?;
 
     Ok(ChapterContent {
         meta,
@@ -125,12 +126,12 @@ pub fn read_chapters_bulk(
     let path = PathBuf::from(&library_path);
     require_active_library(&path)?;
     let section = resolve_section(section)?;
-    let dir = section_dir(&path, &section);
+    let paths = library_paths(&path)?;
     let mut out = Vec::with_capacity(chapter_ids.len());
     for chapter_id in chapter_ids {
         validate_chapter_id(&chapter_id)?;
-        let html = read_html_capped(&html_path(&dir, &chapter_id))?;
-        let meta = read_meta_file(&meta_path(&dir, &chapter_id))?;
+        let html = read_html_capped(&paths.chapter_html(&section, &chapter_id))?;
+        let meta = read_chapter_meta(&path, &section, &chapter_id)?;
         out.push(ChapterContent {
             meta,
             html,
@@ -183,13 +184,7 @@ pub fn save_chapter(
     let section = resolve_section(section)?;
 
     with_library_lock(|| {
-        let dir = section_dir(&path, &section);
-        if section == CHAPTERS {
-            let manifest = read_manifest(&path)?;
-            if !manifest.chapters.iter().any(|c| c.id == meta.id) {
-                return Err("Chapter not found".to_string());
-            }
-        } else if !meta_path(&dir, &meta.id).exists() {
+        if !chapter_exists(&path, &section, &meta.id) {
             return Err("Chapter not found".to_string());
         }
 
@@ -215,12 +210,12 @@ fn apply_chapter_meta_update(
     section: &str,
     mutate: impl FnOnce(&mut ChapterMeta),
 ) -> Result<ChapterMeta, String> {
-    let dir = section_dir(library_path, section);
-    let mut meta = read_meta_file(&meta_path(&dir, chapter_id))?;
+    let paths = library_paths(library_path)?;
+    let mut meta = read_chapter_meta(library_path, section, chapter_id)?;
     mutate(&mut meta);
     meta.updated_at = Utc::now().to_rfc3339();
 
-    let html = fs::read_to_string(html_path(&dir, chapter_id)).map_err(|e| e.to_string())?;
+    let html = fs::read_to_string(paths.chapter_html(section, chapter_id)).map_err(|e| e.to_string())?;
     let meta = write_chapter_files(library_path, section, &meta, &html)?;
 
     if section == CHAPTERS {
@@ -326,15 +321,17 @@ pub fn delete_chapter(
     let section = resolve_section(section)?;
 
     with_library_lock(|| {
-        let dir = section_dir(&path, &section);
-        let html_file = html_path(&dir, &chapter_id);
-        let meta_file = meta_path(&dir, &chapter_id);
+        let paths = library_paths(&path)?;
+        let html_file = paths.chapter_html(&section, &chapter_id);
 
         if html_file.exists() {
             fs::remove_file(&html_file).map_err(|e| e.to_string())?;
         }
-        if meta_file.exists() {
-            fs::remove_file(&meta_file).map_err(|e| e.to_string())?;
+        if paths.layout() == crate::paths::LayoutVersion::Legacy {
+            let meta_file = paths.meta_json(&section, &chapter_id);
+            if meta_file.exists() {
+                fs::remove_file(&meta_file).map_err(|e| e.to_string())?;
+            }
         }
         crate::search_index::remove_search_entry(&path, &section, &chapter_id)?;
         crate::comments::delete_chapter_comments(&path, &chapter_id, &section)?;
@@ -351,6 +348,12 @@ pub fn delete_chapter(
             return Ok(manifest);
         }
 
+        let mut items = load_section_chapters(&path, &section)?;
+        items.retain(|c| c.id != chapter_id);
+        for (i, ch) in items.iter_mut().enumerate() {
+            ch.order = i as u32;
+        }
+        write_section_index(&path, &section, &items)?;
         reload_library_manifest(&path, library_path)
     })
 }
@@ -414,7 +417,9 @@ pub fn duplicate_chapter(
 const IMAGE_EXTENSIONS: &[&str] = &["png", "jpg", "jpeg", "gif", "webp", "bmp"];
 
 fn images_dir(library_path: &Path) -> PathBuf {
-    library_path.join("images")
+    library_paths(library_path)
+        .map(|p| p.images_dir())
+        .unwrap_or_else(|_| library_path.join("images"))
 }
 
 #[tauri::command]
@@ -520,7 +525,8 @@ pub fn save_chapter_comments(
 mod tests {
     use super::*;
     use crate::comments::{write_chapter_comments, ChapterComments, CommentThread, CommentReply};
-    use crate::library::create_library;
+    use crate::library::{create_library, library_paths};
+
     use serial_test::serial;
     use std::fs;
     use uuid::Uuid;
@@ -576,12 +582,9 @@ mod tests {
 
         let manifest = delete_chapter(path.clone(), id.clone(), Some(CHAPTERS.to_string())).unwrap();
         assert!(!manifest.chapters.iter().any(|c| c.id == id));
-        assert!(!html_path(&section_dir(&dir, CHAPTERS), &id).exists());
-        assert!(!meta_path(&section_dir(&dir, CHAPTERS), &id).exists());
-        assert!(!dir
-            .join("chapters")
-            .join(format!("{id}.comments.json"))
-            .exists());
+        let paths = library_paths(&dir).unwrap();
+        assert!(!paths.chapter_html(CHAPTERS, &id).exists());
+        assert!(!paths.comments_json(CHAPTERS, &id).exists());
         assert!(list_chapter_snapshots(&dir, &id, CHAPTERS).unwrap().is_empty());
 
         let _ = fs::remove_dir_all(&dir);
@@ -604,7 +607,10 @@ mod tests {
         let manifest = read_manifest(&dir).unwrap();
         assert_eq!(manifest.chapters.len(), 1);
         assert_eq!(manifest.chapters[0].id, created.meta.id);
-        assert!(html_path(&section_dir(&dir, CHAPTERS), &created.meta.id).exists());
+        assert!(library_paths(&dir)
+            .unwrap()
+            .chapter_html(CHAPTERS, &created.meta.id)
+            .exists());
 
         let _ = fs::remove_dir_all(&dir);
     }
@@ -626,7 +632,10 @@ mod tests {
         )
         .unwrap_err();
         assert!(err.contains("not found"));
-        assert!(!html_path(&section_dir(&dir, CHAPTERS), &id).exists());
+        assert!(!library_paths(&dir)
+            .unwrap()
+            .chapter_html(CHAPTERS, &id)
+            .exists());
 
         let _ = fs::remove_dir_all(&dir);
     }
@@ -778,7 +787,7 @@ mod tests {
     #[serial(active_library)]
     fn save_chapter_rejects_invalid_status() {
         let (dir, path, id) = temp_library_with_chapter();
-        let mut meta = read_meta_file(&meta_path(&section_dir(&dir, CHAPTERS), &id)).unwrap();
+        let mut meta = read_chapter_meta(&dir, CHAPTERS, &id).unwrap();
         meta.status = "bogus-status".to_string();
 
         let err = save_chapter(path, meta, "<p>hi</p>".to_string(), None).unwrap_err();
@@ -791,7 +800,7 @@ mod tests {
     #[serial(active_library)]
     fn save_chapter_rejects_oversized_html() {
         let (dir, path, id) = temp_library_with_chapter();
-        let meta = read_meta_file(&meta_path(&section_dir(&dir, CHAPTERS), &id)).unwrap();
+        let meta = read_chapter_meta(&dir, CHAPTERS, &id).unwrap();
         let huge_html = "a".repeat(MAX_CHAPTER_BYTES as usize + 1);
 
         let err = save_chapter(path, meta, huge_html, None).unwrap_err();

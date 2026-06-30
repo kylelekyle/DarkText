@@ -1,5 +1,6 @@
 import type { AppSettings } from "$lib/utils/appSettings";
 import type { LibraryPreferences } from "$lib/types";
+import { resolveFontSize } from "$lib/utils/typography";
 
 export function preferencesFromSettings(
   settings: AppSettings,
@@ -24,7 +25,9 @@ export function settingsFromPreferences(
     ...base,
     autoSaveMs: prefs.autoSaveMs ?? base.autoSaveMs,
     defaultFontFamily: prefs.defaultFontFamily ?? base.defaultFontFamily,
-    defaultFontSize: prefs.defaultFontSize ?? base.defaultFontSize,
+    defaultFontSize: resolveFontSize(
+      prefs.defaultFontSize ?? base.defaultFontSize,
+    ),
     defaultCompilePreset: prefs.defaultCompilePreset ?? base.defaultCompilePreset,
     defaultCompileFormat: prefs.defaultCompileFormat ?? base.defaultCompileFormat,
     includeResearchInCompile:

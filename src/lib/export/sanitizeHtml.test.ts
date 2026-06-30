@@ -38,6 +38,15 @@ describe("sanitizeHtmlForDisplay", () => {
     expect(sanitizeHtmlForDisplay(html)).toContain("Hi");
   });
 
+  it("keeps pt font sizes and migrates legacy px to pt", () => {
+    expect(sanitizeHtmlForDisplay('<p><span style="font-size: 12pt">Hi</span></p>')).toContain(
+      "font-size: 12pt",
+    );
+    expect(sanitizeHtmlForDisplay('<p><span style="font-size: 12px">Hi</span></p>')).toContain(
+      "font-size: 12pt",
+    );
+  });
+
   it("strips inline event handlers", () => {
     const html = '<p onclick="evil()">Text</p>';
     const out = sanitizeHtmlForDisplay(html);

@@ -48,6 +48,11 @@
         action: () => void app.openChapter(chapter.id, section),
       });
       items.push({
+        id: "open-split",
+        label: "Open in Split View",
+        action: () => void app.openChapterInSplit(chapter.id, section),
+      });
+      items.push({
         id: "rename",
         label: "Rename…",
         action: () => app.openRenameForChapter(chapter.id, section),

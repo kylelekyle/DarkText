@@ -22,7 +22,7 @@ describe("handleSidebarChapterClick", () => {
       items,
       selection,
     );
-    expect(result).toEqual({ open: true, chapterId: "b" });
+    expect(result).toEqual({ open: true, openInSplit: false, chapterId: "b" });
     expect(selection.count).toBe(0);
     expect(selection.anchorId).toBe("b");
   });

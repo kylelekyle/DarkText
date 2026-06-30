@@ -79,7 +79,9 @@ impl Default for MindMapData {
 }
 
 pub fn mindmap_path(library_path: &Path) -> std::path::PathBuf {
-    library_path.join(MINDMAP_FILE)
+    crate::library::library_paths(library_path)
+        .map(|p| p.mindmap())
+        .unwrap_or_else(|_| library_path.join(MINDMAP_FILE))
 }
 
 pub fn node_key(section: &str, id: &str) -> String {

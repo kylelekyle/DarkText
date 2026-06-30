@@ -164,6 +164,23 @@ describe("buildDocxBlob", () => {
     expect(xml).toContain("could not be embedded");
   });
 
+  it("exports inline pt font sizes to DOCX half-points", async () => {
+    const blob = await buildDocxBlob(
+      [
+        {
+          title: "Sizes",
+          html: '<p>Normal <span style="font-size: 14pt">larger</span></p>',
+        },
+      ],
+      {},
+      "manuscript",
+      undefined,
+    );
+    const xml = await documentXml(blob);
+    expect(xml).toContain('w:val="24"');
+    expect(xml).toContain('w:val="28"');
+  });
+
   it("flattens an unsupported <table> into cell text without throwing or losing data", async () => {
     // DOCX export has no real table support (no `Table`/`TableRow`/`TableCell`
     // usage in htmlToDocx.ts) — a <table> falls through to the generic

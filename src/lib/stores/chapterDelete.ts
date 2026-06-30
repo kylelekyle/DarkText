@@ -1,5 +1,5 @@
 import type { Editor } from "@tiptap/core";
-import { chapterStore } from "$lib/stores/chapter.svelte";
+import { chapterStore, splitChapterStore } from "$lib/stores/chapter.svelte";
 import { libraryStore } from "$lib/stores/library.svelte";
 import { reviewStore } from "$lib/stores/review.svelte";
 import { nextChapterIdAfterDelete } from "$lib/stores/chapterDeleteNav";
@@ -24,6 +24,9 @@ export async function deleteChapterWorkspace(
   const wasActive =
     chapterStore.activeChapterId === chapterId &&
     chapterStore.activeSection === section;
+  const wasSplit =
+    splitChapterStore.activeChapterId === chapterId &&
+    splitChapterStore.activeSection === section;
 
   const nextId = wasActive ? nextChapterIdAfterDelete(chapterId, section) : undefined;
 
@@ -37,6 +40,10 @@ export async function deleteChapterWorkspace(
   }
 
   chapterStore.abortSavesForDeletedChapter(chapterId, section);
+  if (wasSplit) {
+    splitChapterStore.abortSavesForDeletedChapter(chapterId, section);
+    splitChapterStore.clearActiveChapter();
+  }
 
   try {
     await libraryStore.deleteChapter(chapterId, section);

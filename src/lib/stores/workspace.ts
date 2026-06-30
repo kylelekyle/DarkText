@@ -14,7 +14,7 @@ import {
   persistWorkspaceSession,
 } from "$lib/utils/workspaceSession";
 import { countWords, htmlToPlain } from "$lib/utils/stats";
-import { chapterStore } from "./chapter.svelte";
+import { chapterStore, splitChapterStore } from "./chapter.svelte";
 import { libraryStore } from "./library.svelte";
 import { reviewStore } from "./review.svelte";
 
@@ -140,6 +140,13 @@ export async function openChapterWorkspace(
   persistWorkspaceSession();
 }
 
+export async function openSplitChapterWorkspace(
+  chapterId: string,
+  section: ChapterSection = "chapters",
+): Promise<void> {
+  await splitChapterStore.openChapter(chapterId, section);
+}
+
 /** Open a chapter we already have in memory (e.g. right after create). */
 export async function openChapterFromContentWorkspace(
   host: WorkspaceHost,
@@ -228,6 +235,7 @@ export function goToWelcomeWorkspace(host: WorkspaceHost): void {
   host.libraryReviewTotalsLoading = false;
   host.setEditorRef(null);
   chapterStore.reset();
+  splitChapterStore.reset();
   reviewStore.reset();
   libraryStore.reset();
   host.closeConfirmed = false;

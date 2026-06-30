@@ -3,7 +3,17 @@
   import { app } from "$lib/stores/app.svelte";
   import { fontStore } from "$lib/stores/fonts.svelte";
   import { setParagraphAlignment } from "$lib/editor/align";
-  import { FONT_SIZES, fontSizeLabel, primaryFamily, resolveFontSize } from "$lib/utils/typography";
+  import {
+    applyStickyFontSize,
+    fontSizeMarkAtEditor,
+  } from "$lib/editor/fontSize";
+  import {
+    FONT_SIZES,
+    fontSizeLabel,
+    fontSizePtCss,
+    primaryFamily,
+    resolveFontSize,
+  } from "$lib/utils/typography";
   import FontFamilyPicker from "./FontFamilyPicker.svelte";
 
 
@@ -15,38 +25,64 @@
 
   let canUndo = $state(false);
   let canRedo = $state(false);
-  let currentFont = $state(app.settings.defaultFontFamily);
+  /** Font for new typing — stays until the user picks another in the toolbar. */
+  let typingFont = $state(app.settings.defaultFontFamily);
+  /** Size for new typing — stays until the user picks another in the toolbar. */
+  let typingFontSize = $state(resolveFontSize(app.settings.defaultFontSize));
+  let toolbarFontSize = $state(resolveFontSize(app.settings.defaultFontSize));
+  let isBold = $state(false);
+  let isItalic = $state(false);
+  let isUnderline = $state(false);
+
+  $effect(() => {
+    typingFont = app.settings.defaultFontFamily;
+    typingFontSize = resolveFontSize(app.settings.defaultFontSize);
+  });
+
+  function stickyFontIsActive(ed: Editor): boolean {
+    const stored = ed.state.storedMarks;
+    if (!stored?.length) return false;
+    const textStyle = stored.find((m) => m.type.name === "textStyle");
+    return textStyle?.attrs?.fontFamily === typingFont;
+  }
+
+  function applyStickyFont(ed: Editor) {
+    if (!ed.state.selection.empty || stickyFontIsActive(ed)) return;
+    ed.commands.setFontFamily(typingFont);
+  }
 
   $effect(() => {
     if (!editor || editor.isDestroyed) {
       canUndo = false;
       canRedo = false;
+      isBold = false;
+      isItalic = false;
+      isUnderline = false;
       return;
     }
-    const sync = () => {
+    const syncToolbar = () => {
       if (editor.isDestroyed) return;
       canUndo = editor.can().undo();
       canRedo = editor.can().redo();
-      const attrs = editor.getAttributes("textStyle");
-      currentFont = (attrs.fontFamily as string | undefined) ?? app.settings.defaultFontFamily;
+      isBold = editor.isActive("bold");
+      isItalic = editor.isActive("italic");
+      isUnderline = editor.isActive("underline");
+      toolbarFontSize = fontSizeMarkAtEditor(editor) ?? typingFontSize;
     };
-    sync();
-    editor.on("transaction", sync);
-    editor.on("selectionUpdate", sync);
+    const onSelectionUpdate = () => {
+      syncToolbar();
+      applyStickyFont(editor);
+      applyStickyFontSize(editor, typingFontSize);
+    };
+    syncToolbar();
+    applyStickyFont(editor);
+    applyStickyFontSize(editor, typingFontSize);
+    editor.on("transaction", syncToolbar);
+    editor.on("selectionUpdate", onSelectionUpdate);
     return () => {
-      editor.off("transaction", sync);
-      editor.off("selectionUpdate", sync);
+      editor.off("transaction", syncToolbar);
+      editor.off("selectionUpdate", onSelectionUpdate);
     };
-  });
-
-  $effect(() => {
-    void app.settings.defaultFontFamily;
-    if (editor && !editor.isDestroyed) {
-      const attrs = editor.getAttributes("textStyle");
-      if (!attrs.fontFamily) currentFont = app.settings.defaultFontFamily;
-    } else {
-      currentFont = app.settings.defaultFontFamily;
-    }
   });
 
   function cmd(fn: () => void) {
@@ -61,13 +97,16 @@
       return;
     }
 
+    typingFont = cssValue;
     editor.chain().focus().setFontFamily(cssValue).run();
-    currentFont = cssValue;
   }
 
   function applyFontSize(val: string) {
     if (!editor) return;
-    editor.chain().focus().setFontSize(val).run();
+    const size = resolveFontSize(val);
+    typingFontSize = size;
+    toolbarFontSize = size;
+    editor.chain().focus().setFontSize(fontSizePtCss(size)).run();
   }
 
   function align(alignment: "left" | "center" | "right" | "justify") {
@@ -78,27 +117,45 @@
 
 <div class="toolbar" class:editor-mode={app.mode === "editor"} class:author-mode={app.mode === "author"}>
   {#if app.mode === "author"}
-    <FontFamilyPicker compact value={currentFont} onchange={(v) => void applyFont(v)} />
+    <FontFamilyPicker compact value={typingFont} onchange={(v) => void applyFont(v)} />
 
     <select
       class="tool-select narrow"
-      value={resolveFontSize(app.settings.defaultFontSize)}
+      value={toolbarFontSize}
       onchange={(e) => applyFontSize((e.currentTarget as HTMLSelectElement).value)}
     >
       {#each FONT_SIZES as size}
-        <option value={size}>{fontSizeLabel(size)}</option>
+        <option value={size}>{fontSizeLabel(size)} pt</option>
       {/each}
     </select>
 
     <div class="sep"></div>
 
-    <button class="tool-btn" title="Bold (Ctrl+B)" onclick={cmd(() => editor?.chain().focus().toggleBold().run())}>
+    <button
+      class="tool-btn"
+      class:active={isBold}
+      title="Bold (Ctrl+B)"
+      aria-pressed={isBold}
+      onclick={cmd(() => editor?.chain().focus().toggleBold().run())}
+    >
       <strong>B</strong>
     </button>
-    <button class="tool-btn" title="Italic (Ctrl+I)" onclick={cmd(() => editor?.chain().focus().toggleItalic().run())}>
+    <button
+      class="tool-btn"
+      class:active={isItalic}
+      title="Italic (Ctrl+I)"
+      aria-pressed={isItalic}
+      onclick={cmd(() => editor?.chain().focus().toggleItalic().run())}
+    >
       <em>I</em>
     </button>
-    <button class="tool-btn" title="Underline (Ctrl+U)" onclick={cmd(() => editor?.chain().focus().toggleUnderline().run())}>
+    <button
+      class="tool-btn"
+      class:active={isUnderline}
+      title="Underline (Ctrl+U)"
+      aria-pressed={isUnderline}
+      onclick={cmd(() => editor?.chain().focus().toggleUnderline().run())}
+    >
       <span class="underline">U</span>
     </button>
 
@@ -189,6 +246,19 @@
     background: var(--bg-hover);
     border-color: var(--border-subtle);
     color: var(--text-primary);
+  }
+
+  .tool-btn.active {
+    background: var(--accent-subtle);
+    border-color: var(--accent-dim);
+    color: var(--accent-hover);
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent-dim) 35%, transparent);
+  }
+
+  .tool-btn.active:hover:not(:disabled) {
+    background: color-mix(in srgb, var(--accent-subtle) 80%, var(--bg-hover));
+    border-color: var(--accent-dim);
+    color: var(--accent-hover);
   }
 
   .tool-btn:disabled {

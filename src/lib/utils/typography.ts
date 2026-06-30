@@ -28,34 +28,51 @@ export function fontOptionLabel(family: string, source: "system" | "custom"): st
   return source === "custom" ? `${family} (Library)` : family;
 }
 
-/** Word-processor-style point sizes for the toolbar dropdown. */
+/** Stored settings / toolbar values are plain point numbers (e.g. "12"). */
+export const DEFAULT_FONT_SIZE = "12";
+
+/** Editor toolbar / settings sizes in points. */
 export const FONT_SIZES = [
-  "9pt",
-  "10pt",
-  "11pt",
-  "12pt",
-  "13pt",
-  "14pt",
-  "16pt",
-  "18pt",
-  "20pt",
-  "24pt",
-  "28pt",
-  "32pt",
-  "36pt",
+  "6",
+  "7",
+  "8",
+  "9",
+  "10",
+  "11",
+  "12",
+  "13",
+  "14",
+  "16",
+  "18",
+  "20",
+  "24",
+  "28",
+  "32",
+  "36",
 ] as const;
 
 export function fontSizeLabel(size: string): string {
-  return size.replace(/pt$/, "").replace(/px$/, "");
+  return size.replace(/pt$/i, "").replace(/px$/i, "");
 }
 
-/** Normalize stored settings to a valid dropdown value. */
+/** CSS font-size value for editor HTML (always points). */
+export function fontSizePtCss(size: string): string {
+  return `${fontSizeLabel(resolveFontSize(size))}pt`;
+}
+
+/** Normalize stored settings to a valid toolbar value (plain points). */
 export function resolveFontSize(size: string): string {
-  if ((FONT_SIZES as readonly string[]).includes(size)) return size;
-  // Legacy px defaults map to nearest pt option
-  if (size === "18px") return "14pt";
-  if (size === "15px") return "11pt";
-  if (size === "22px") return "16pt";
-  if (size === "26px") return "20pt";
-  return "12pt";
+  const trimmed = size.trim();
+  if ((FONT_SIZES as readonly string[]).includes(trimmed)) return trimmed;
+  const match = /^([\d.]+)\s*(pt|px)?$/i.exec(trimmed);
+  if (match) {
+    const n = match[1];
+    if ((FONT_SIZES as readonly string[]).includes(n)) return n;
+  }
+  return DEFAULT_FONT_SIZE;
+}
+
+/** Rewrite legacy inline `font-size: Npx` styles in chapter HTML to points. */
+export function migrateLegacyFontSizesInHtml(html: string): string {
+  return html.replace(/font-size:\s*([\d.]+)\s*px/gi, (_, n: string) => `font-size: ${n}pt`);
 }

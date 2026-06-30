@@ -250,7 +250,7 @@
         <button class="action-card" onclick={() => handleOpenLibrary()} disabled={loading}>
           <span class="card-icon" aria-hidden="true">◎</span>
           <span class="card-title">Open existing Library</span>
-          <span class="card-desc">Pick a folder with library.json</span>
+          <span class="card-desc">Pick an existing DarkText library folder</span>
         </button>
       </div>
 

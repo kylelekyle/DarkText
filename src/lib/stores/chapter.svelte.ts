@@ -5,12 +5,19 @@ import { countWords, estimatePages, htmlToPlain, statsFromHtml } from "$lib/util
 import { sanitizeHtmlForDisplay } from "$lib/export/sanitizeHtml";
 import { formatError } from "$lib/utils/errors";
 import { defaultAppSettings, type AppSettings } from "$lib/utils/appSettings";
+import { fontSizePtCss } from "$lib/utils/typography";
 import type { ChapterContent, ChapterMeta, ChapterSection } from "$lib/types";
 
 export type ChapterToast = (msg: string) => void;
 export type OnHtmlChange = (html: string) => void;
+export type EditorPane = "primary" | "secondary";
 
 export class ChapterStore {
+  readonly pane: EditorPane;
+
+  constructor(pane: EditorPane = "primary") {
+    this.pane = pane;
+  }
   activeChapterId = $state<string | null>(null);
   activeSection = $state<ChapterSection>("chapters");
   activeChapterMeta = $state<ChapterMeta | null>(null);
@@ -135,11 +142,13 @@ export class ChapterStore {
 
   applyEditorStyles(spellcheck: boolean, fontFamily: string, fontSize: string) {
     requestAnimationFrame(() => {
-      const el = document.querySelector(".chapter-prose") as HTMLElement | null;
+      const el = document.querySelector(
+        `[data-editor-pane="${this.pane}"] .chapter-prose`,
+      ) as HTMLElement | null;
       if (!el) return;
       el.spellcheck = spellcheck;
       el.style.fontFamily = fontFamily;
-      el.style.fontSize = fontSize;
+      el.style.fontSize = fontSizePtCss(fontSize);
     });
   }
 
@@ -372,4 +381,5 @@ export class ChapterStore {
   }
 }
 
-export const chapterStore = new ChapterStore();
+export const chapterStore = new ChapterStore("primary");
+export const splitChapterStore = new ChapterStore("secondary");

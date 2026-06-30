@@ -1,7 +1,7 @@
 use crate::compile::stats_from_html;
 use crate::library::{
-    atomic_write, html_path, meta_path, read_meta_file, section_dir, validate_chapter_id,
-    validate_snapshot_id, write_chapter_files,
+    atomic_write, library_paths, read_chapter_meta, validate_chapter_id, validate_snapshot_id,
+    write_chapter_files,
 };
 use crate::models::{ChapterContent, ChapterSnapshot};
 use chrono::Utc;
@@ -11,10 +11,14 @@ use std::path::{Path, PathBuf};
 const MAX_SNAPSHOTS_PER_CHAPTER: usize = 30;
 
 fn snapshot_root(library_path: &Path, section: &str, chapter_id: &str) -> PathBuf {
-    library_path
-        .join("snapshots")
-        .join(section)
-        .join(chapter_id)
+    library_paths(library_path)
+        .map(|p| p.snapshot_dir(section, chapter_id))
+        .unwrap_or_else(|_| {
+            library_path
+                .join("snapshots")
+                .join(section)
+                .join(chapter_id)
+        })
 }
 
 pub fn save_chapter_snapshot(
@@ -23,12 +27,13 @@ pub fn save_chapter_snapshot(
     section: &str,
 ) -> Result<ChapterSnapshot, String> {
     validate_chapter_id(chapter_id)?;
-    let html_file = html_path(&section_dir(library_path, section), chapter_id);
+    let paths = library_paths(library_path)?;
+    let html_file = paths.chapter_html(section, chapter_id);
     if !html_file.exists() {
         return Err("Chapter not found".into());
     }
     let html = fs::read_to_string(&html_file).map_err(|e| e.to_string())?;
-    let meta = read_meta_file(&meta_path(&section_dir(library_path, section), chapter_id))?;
+    let meta = read_chapter_meta(library_path, section, chapter_id)?;
     let (words, chars) = stats_from_html(&html);
     let created_at = Utc::now().to_rfc3339();
     let id = created_at.replace(':', "-");
@@ -140,8 +145,17 @@ pub fn restore_chapter_snapshot(
         return Err("Snapshot not found".into());
     }
     let html = fs::read_to_string(&html_file).map_err(|e| e.to_string())?;
-    let meta = read_meta_file(&meta_path(&section_dir(library_path, section), chapter_id))?;
+    let meta = read_chapter_meta(library_path, section, chapter_id)?;
     let updated = write_chapter_files(library_path, section, &meta, &html)?;
+
+    if section == crate::library::CHAPTERS {
+        let mut manifest = crate::library::read_manifest(library_path)?;
+        if let Some(ch) = manifest.chapters.iter_mut().find(|c| c.id == chapter_id) {
+            *ch = updated.clone();
+        }
+        crate::library::write_manifest(library_path, &manifest)?;
+    }
+
     Ok(ChapterContent {
         meta: updated,
         html,

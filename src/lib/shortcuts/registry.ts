@@ -27,6 +27,7 @@ export const MENU_SHORTCUT_IDS: Record<string, string> = {
   "fmt.underline": "underline",
   "book.compile": "compile",
   "view.sidebar": "sidebar",
+  "view.split": "splitView",
   "view.mindmap": "mindmap",
   "view.focus": "focusMode",
 };
@@ -108,6 +109,13 @@ export const SHORTCUTS: ShortcutDef[] = [
       if (app.focusMode) return;
       app.sidebarCollapsed = !app.sidebarCollapsed;
     },
+  },
+  {
+    id: "splitView",
+    keys: "Ctrl+Shift+\\",
+    label: "Split View",
+    when: () => !!app.library && !app.focusMode,
+    run: () => void app.toggleSplitView(),
   },
   {
     id: "focusMode",

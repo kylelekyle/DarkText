@@ -1,5 +1,5 @@
 import type { Editor } from "@tiptap/core";
-import { chapterStore } from "$lib/stores/chapter.svelte";
+import { chapterStore, splitChapterStore } from "$lib/stores/chapter.svelte";
 import { libraryStore } from "$lib/stores/library.svelte";
 import { mindmapStore } from "$lib/stores/mindmap.svelte";
 import { reviewStore } from "$lib/stores/review.svelte";
@@ -9,6 +9,7 @@ import type { ChapterSection } from "$lib/types";
 export interface AppStoreBindings {
   settings: AppSettings;
   editorRef: Editor | null;
+  splitEditorRef: Editor | null;
   showToast(msg: string): void;
   scheduleLibraryReviewTotalsRefresh(): void;
   openChapter(chapterId: string, section: ChapterSection): Promise<void>;
@@ -22,6 +23,9 @@ export function bindAppStores(app: AppStoreBindings): void {
   chapterStore.bindSettings(() => app.settings);
   chapterStore.bindEditor(() => app.editorRef);
   chapterStore.bindOnHtmlChange((html) => reviewStore.onHtmlUpdated(html));
+  splitChapterStore.bindToast((msg) => app.showToast(msg));
+  splitChapterStore.bindSettings(() => app.settings);
+  splitChapterStore.bindEditor(() => app.splitEditorRef);
   reviewStore.bindToast((msg) => app.showToast(msg));
   reviewStore.bindEditor(() => app.editorRef);
   reviewStore.bindReviewNames(() => ({

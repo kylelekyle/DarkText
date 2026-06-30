@@ -44,7 +44,31 @@ type InlineStyle = {
   bold?: boolean;
   italics?: boolean;
   underline?: boolean;
+  sizeHalfPoints?: number;
 };
+
+function fontSizeHalfPointsFromStyle(style: string): number | undefined {
+  const ptMatch = /font-size:\s*([\d.]+)\s*pt/i.exec(style);
+  if (ptMatch) {
+    const pt = Number(ptMatch[1]);
+    if (Number.isFinite(pt) && pt > 0) return Math.round(pt * 2);
+  }
+  const pxMatch = /font-size:\s*([\d.]+)\s*px/i.exec(style);
+  if (pxMatch) {
+    const px = Number(pxMatch[1]);
+    if (Number.isFinite(px) && px > 0) return Math.round((px * 72) / 48);
+  }
+  return undefined;
+}
+
+function inlineStyleFromElement(el: HTMLElement): Partial<InlineStyle> {
+  const next: Partial<InlineStyle> = {};
+  const halfPoints =
+    fontSizeHalfPointsFromStyle(el.getAttribute("style") ?? "") ??
+    fontSizeHalfPointsFromStyle(el.style.cssText);
+  if (halfPoints) next.sizeHalfPoints = halfPoints;
+  return next;
+}
 
 type BlockItem = Paragraph;
 
@@ -164,7 +188,7 @@ function runOptions(
   return {
     text,
     font: preset.font,
-    size: preset.sizeHalfPoints,
+    size: style.sizeHalfPoints ?? preset.sizeHalfPoints,
     bold: style.bold,
     italics: style.italics,
     underline: style.underline ? { type: UnderlineType.SINGLE } : undefined,
@@ -208,6 +232,7 @@ function textRunsFromNode(
   if (tag === "strong" || tag === "b") next.bold = true;
   if (tag === "em" || tag === "i") next.italics = true;
   if (tag === "u") next.underline = true;
+  if (tag === "span") Object.assign(next, inlineStyleFromElement(el));
 
   if (tag === "span" && review) {
     if (el.classList.contains("dt-insertion")) {

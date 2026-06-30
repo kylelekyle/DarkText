@@ -1,5 +1,5 @@
 import type { Editor } from "@tiptap/core";
-import { chapterStore } from "$lib/stores/chapter.svelte";
+import { chapterStore, splitChapterStore } from "$lib/stores/chapter.svelte";
 import { exportStore } from "$lib/stores/export.svelte";
 import { libraryStore } from "$lib/stores/library.svelte";
 import { reviewStore } from "$lib/stores/review.svelte";
@@ -35,6 +35,7 @@ import {
   createLibraryWorkspace,
   goToWelcomeWorkspace,
   openChapterFromContentWorkspace,
+  openSplitChapterWorkspace,
   openChapterWorkspace,
   openLibraryWorkspace,
   reloadActiveChapterWorkspace,
@@ -42,6 +43,7 @@ import {
   scheduleLibraryReviewTotalsRefresh,
   scheduleSearchJumpApply,
 } from "$lib/stores/workspace";
+import { pickDefaultSplitChapter } from "$lib/utils/splitView";
 import type {
   ActiveDialog,
   AppMode,
@@ -72,9 +74,12 @@ class AppStore {
   sidebarTab = $state<SidebarTab>("chapters");
   sidebarCollapsed = $state(false);
   sidebarWidth = $state(getAppSettings().sidebarWidth);
+  splitRatio = $state(getAppSettings().splitRatio);
   renameChapterTargetId = $state<string | null>(null);
   renameChapterSection = $state<ChapterSection>("chapters");
   focusMode = $state(false);
+  splitViewEnabled = $state(false);
+  focusedPane = $state<"primary" | "secondary">("primary");
   activeDialog = $state<ActiveDialog>(null);
   showQuickActions = $state(false);
   showMindMap = $state(false);
@@ -91,6 +96,7 @@ class AppStore {
   toast = $state<string | null>(null);
   focusChapterSearch = $state(false);
   editorRef = $state<Editor | null>(null);
+  splitEditorRef = $state<Editor | null>(null);
 
   confirmResolver: ((ok: boolean) => void) | null = null;
   private readonly chapterOpenQueue = new ChapterOpenQueue();
@@ -180,7 +186,33 @@ class AppStore {
     return chapterStore.editorRevision;
   }
   get hasUnsavedChanges() {
-    return chapterStore.hasUnsavedChanges;
+    return (
+      chapterStore.hasUnsavedChanges ||
+      (this.splitViewEnabled && splitChapterStore.hasUnsavedChanges)
+    );
+  }
+
+  get activeEditorRef(): Editor | null {
+    if (this.splitViewEnabled && this.focusedPane === "secondary") {
+      return this.splitEditorRef;
+    }
+    return this.editorRef;
+  }
+
+  get splitChapterId() {
+    return splitChapterStore.activeChapterId;
+  }
+  get splitSection() {
+    return splitChapterStore.activeSection;
+  }
+  get splitChapterMeta() {
+    return splitChapterStore.activeChapterMeta;
+  }
+  get splitChapterHtml() {
+    return splitChapterStore.activeChapterHtml;
+  }
+  get splitEditorRevision() {
+    return splitChapterStore.editorRevision;
   }
   get chapterCharCount() {
     return chapterStore.chapterCharCount;
@@ -268,6 +300,15 @@ class AppStore {
     this.applySettings({ ...this.settings, sidebarWidth: this.sidebarWidth });
   }
 
+  setSplitRatio(ratio: number) {
+    this.splitRatio = Math.max(0.22, Math.min(0.78, ratio));
+  }
+
+  commitSplitRatio() {
+    if (this.settings.splitRatio === this.splitRatio) return;
+    this.applySettings({ ...this.settings, splitRatio: this.splitRatio });
+  }
+
   openRenameForChapter(chapterId: string, section: ChapterSection = "chapters") {
     this.renameChapterTargetId = chapterId;
     this.renameChapterSection = section;
@@ -292,6 +333,42 @@ class AppStore {
   setEditor(editor: Editor | null) {
     this.editorRef = editor;
     if (editor) this.scheduleSearchJumpApply();
+  }
+
+  setSplitEditor(editor: Editor | null) {
+    this.splitEditorRef = editor;
+  }
+
+  focusPane(pane: "primary" | "secondary") {
+    this.focusedPane = pane;
+  }
+
+  scheduleSplitAutoSave(editor: Editor) {
+    splitChapterStore.scheduleAutoSave(editor);
+  }
+
+  async toggleSplitView() {
+    if (this.splitViewEnabled) {
+      if (!(await splitChapterStore.prepareChapterSwitch())) return;
+      splitChapterStore.clearActiveChapter();
+      this.splitEditorRef = null;
+      this.splitViewEnabled = false;
+      this.focusedPane = "primary";
+      return;
+    }
+    this.focusedPane = "primary";
+    const pick = pickDefaultSplitChapter();
+    if (pick) {
+      await openSplitChapterWorkspace(pick.chapterId, pick.section);
+    }
+    this.splitViewEnabled = true;
+  }
+
+  async openChapterInSplit(chapterId: string, section: ChapterSection = "chapters") {
+    const enabling = !this.splitViewEnabled;
+    this.focusedPane = "secondary";
+    await openSplitChapterWorkspace(chapterId, section);
+    if (enabling) this.splitViewEnabled = true;
   }
 
   addCommentOnSelection() {
@@ -438,9 +515,13 @@ class AppStore {
   }
 
   async openChapter(chapterId: string, section: ChapterSection = "chapters") {
-    return this.chapterOpenQueue.enqueue(() =>
-      openChapterWorkspace(this, chapterId, section),
-    );
+    return this.chapterOpenQueue.enqueue(async () => {
+      if (this.splitViewEnabled && this.focusedPane === "secondary") {
+        await openSplitChapterWorkspace(chapterId, section);
+        return;
+      }
+      await openChapterWorkspace(this, chapterId, section);
+    });
   }
 
   async openChapterContent(content: ChapterContent) {
@@ -500,8 +581,11 @@ class AppStore {
     await reloadActiveChapterWorkspace(content);
   }
 
-  saveAll() {
-    return chapterStore.saveAll();
+  async saveAll() {
+    await chapterStore.saveAll();
+    if (this.splitViewEnabled) {
+      await splitChapterStore.saveAll();
+    }
   }
 
   deleteActiveChapter() {
@@ -604,6 +688,7 @@ class AppStore {
       onConfirmed: () => {
         this.closeConfirmed = true;
         chapterStore.discardUnsaved();
+        splitChapterStore.discardUnsaved();
       },
     });
   }
@@ -634,6 +719,7 @@ class AppStore {
       this.sidebarBeforeFocus = this.sidebarCollapsed;
       this.showMindMap = false;
       this.showReadThrough = false;
+      if (this.splitViewEnabled) void this.toggleSplitView();
       this.focusMode = true;
     } else {
       this.focusMode = false;

@@ -1,4 +1,5 @@
 import type { CompilePreset, ExportFormat } from "$lib/types";
+import { DEFAULT_FONT_SIZE, resolveFontSize } from "$lib/utils/typography";
 
 const STORAGE_KEY = "darktext-settings";
 
@@ -20,6 +21,8 @@ export interface AppSettings {
   includeCharactersInCompile: boolean;
   defaultLibraryFolder: string;
   sidebarWidth: number;
+  /** Primary pane share when split view is open (0–1). */
+  splitRatio: number;
   authorDisplayName: string;
   reviewerDisplayName: string;
 }
@@ -31,7 +34,7 @@ export const defaultAppSettings: AppSettings = {
   installType: null,
   firstRunComplete: false,
   defaultFontFamily: "Georgia, serif",
-  defaultFontSize: "12pt",
+  defaultFontSize: DEFAULT_FONT_SIZE,
   spellcheck: true,
   defaultCompilePreset: "manuscript",
   defaultCompileFormat: "docx",
@@ -39,6 +42,7 @@ export const defaultAppSettings: AppSettings = {
   includeCharactersInCompile: false,
   defaultLibraryFolder: "",
   sidebarWidth: 260,
+  splitRatio: 0.5,
   authorDisplayName: "Author",
   reviewerDisplayName: "Editor",
 };
@@ -49,6 +53,10 @@ export function normalizeAppSettings(raw: Partial<AppSettings>): AppSettings {
     ...merged,
     autoSaveMs: Math.min(10_000, Math.max(200, Number(merged.autoSaveMs) || defaultAppSettings.autoSaveMs)),
     sidebarWidth: Math.min(480, Math.max(180, Number(merged.sidebarWidth) || defaultAppSettings.sidebarWidth)),
+    splitRatio: Math.min(0.78, Math.max(0.22, Number(merged.splitRatio) || defaultAppSettings.splitRatio)),
+    defaultFontSize: resolveFontSize(
+      String(merged.defaultFontSize ?? defaultAppSettings.defaultFontSize),
+    ),
     spellcheck: merged.spellcheck !== false,
     defaultCompilePreset: VALID_PRESETS.includes(merged.defaultCompilePreset)
       ? merged.defaultCompilePreset

@@ -1,4 +1,4 @@
-import { chapterStore } from "$lib/stores/chapter.svelte";
+import { chapterStore, splitChapterStore } from "$lib/stores/chapter.svelte";
 import type { ConfirmDialogState } from "$lib/types";
 import { waitForPaint } from "$lib/utils/platform";
 
@@ -49,6 +49,7 @@ export async function guardUnsavedChanges(
     );
     if (!ok) return;
     chapterStore.discardUnsaved();
+    splitChapterStore.discardUnsaved();
   }
   await action();
 }

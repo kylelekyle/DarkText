@@ -6,6 +6,7 @@ import { sidebarSelection } from "$lib/stores/sidebarSelection.svelte";
 
 export interface SidebarClickResult {
   open: boolean;
+  openInSplit: boolean;
   chapterId: string;
 }
 
@@ -20,17 +21,23 @@ export function handleSidebarChapterClick(
 
   if (e.shiftKey && selection.anchorId) {
     selection.setRange(items, selection.anchorId, chapterId, additive);
-    return { open: false, chapterId };
+    return { open: false, openInSplit: false, chapterId };
   }
 
   if (additive) {
     selection.toggle(chapterId);
-    return { open: false, chapterId };
+    return { open: false, openInSplit: false, chapterId };
+  }
+
+  if (e.altKey || e.button === 1) {
+    selection.anchorId = chapterId;
+    selection.selectedIds = new Set();
+    return { open: false, openInSplit: true, chapterId };
   }
 
   selection.anchorId = chapterId;
   selection.selectedIds = new Set();
-  return { open: true, chapterId };
+  return { open: true, openInSplit: false, chapterId };
 }
 
 /** Clear multi-select when the user clicks outside sidebar chapter rows. */

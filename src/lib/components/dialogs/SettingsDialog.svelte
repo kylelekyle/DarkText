@@ -140,7 +140,7 @@
         </label>
         <p class="hint">Used as the starting location when you create a new Library.</p>
         <p class="hint">
-          Editor, compile, and auto-save preferences are saved in each Library's <code>book.json</code> when a book is open — copy the folder to move your settings with your manuscript.
+          Editor, compile, and auto-save preferences are saved in each library's <code>.darktext/book.json</code> when a book is open — copy the folder to move your settings with your manuscript.
         </p>
         <p class="hint">
           Chapter snapshots are stored under <code>snapshots/</code> in each Library (File → Chapter snapshots).

@@ -11,6 +11,7 @@
   import { reviewStore } from "$lib/stores/review.svelte";
   import { focusEditorAtEnd } from "$lib/editor/focus";
   import { app } from "$lib/stores/app.svelte";
+  import type { EditorPane } from "$lib/stores/chapter.svelte";
   import ContextMenu from "./ContextMenu.svelte";
 
 
@@ -19,6 +20,7 @@
     chapterId: string | null;
     editorRevision?: number;
     spellcheck?: boolean;
+    pane?: EditorPane;
     onUpdate?: (editor: Editor) => void;
     onEditorReady?: (editor: Editor | null) => void;
   }
@@ -28,6 +30,7 @@
     chapterId,
     editorRevision = 0,
     spellcheck = true,
+    pane = "primary",
     onUpdate,
     onEditorReady,
   }: Props = $props();
@@ -64,7 +67,7 @@
       element,
       extensions: buildChapterExtensions(libraryStore.library?.path ?? null),
       content: html,
-      autofocus: true,
+      autofocus: pane === "primary",
       editorProps: buildChapterEditorProps(() => ed, spellcheck, contextHandlers),
       onUpdate: ({ editor: updated }) => {
         onUpdate?.(updated);
@@ -94,8 +97,10 @@
       editor.commands.setContent(html, { emitUpdate: false });
       mountedChapterId = chapterId;
       mountedRevision = editorRevision;
-      reviewStore.syncCommentMarksFromEditor(editor);
-      if (chapterId) {
+      if (pane === "primary") {
+        reviewStore.syncCommentMarksFromEditor(editor);
+      }
+      if (chapterId && pane === "primary") {
         const ed = editor;
         requestAnimationFrame(() => {
           if (!ed.isDestroyed && chapterId === mountedChapterId) {
@@ -141,12 +146,13 @@
 
 <svelte:window onclick={closeContextMenu} />
 
-<div class="chapter-editor">
+<div class="chapter-editor" data-editor-pane={pane} role="group">
   <div class="editor-scroller" class:focus-mode={app.focusMode}>
     <div
       class="editor-page"
       role="presentation"
       onmousedown={(e) => {
+        if (app.splitViewEnabled) app.focusPane(pane);
         if (!editor || e.button !== 0) return;
         const prose = element?.querySelector(".ProseMirror");
         if (prose && !prose.contains(e.target as Node)) {
