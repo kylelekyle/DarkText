@@ -33,10 +33,20 @@
   let isBold = $state(false);
   let isItalic = $state(false);
   let isUnderline = $state(false);
+  let lastDefaultFont = app.settings.defaultFontFamily;
+  let lastDefaultFontSize = app.settings.defaultFontSize;
 
   $effect(() => {
-    typingFont = app.settings.defaultFontFamily;
-    typingFontSize = resolveFontSize(app.settings.defaultFontSize);
+    const family = app.settings.defaultFontFamily;
+    const size = app.settings.defaultFontSize;
+    if (family !== lastDefaultFont) {
+      typingFont = family;
+      lastDefaultFont = family;
+    }
+    if (size !== lastDefaultFontSize) {
+      typingFontSize = resolveFontSize(size);
+      lastDefaultFontSize = size;
+    }
   });
 
   function stickyFontIsActive(ed: Editor): boolean {

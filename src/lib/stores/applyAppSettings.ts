@@ -18,19 +18,26 @@ export function applyAppSettings(
   next: AppSettings,
   opts?: { skipLibrarySync?: boolean },
 ): void {
+  const prev = host.settings;
   host.settings = next;
   saveAppSettings(next);
   host.sidebarWidth = next.sidebarWidth;
   host.splitRatio = next.splitRatio;
   host.spellcheck = next.spellcheck;
   void fontStore.ensureFont(next.defaultFontFamily);
-  const styleArgs = [
-    next.spellcheck,
-    next.defaultFontFamily,
-    next.defaultFontSize,
-  ] as const;
-  chapterStore.applyEditorStyles(...styleArgs);
-  splitChapterStore.applyEditorStyles(...styleArgs);
+  if (
+    prev.spellcheck !== next.spellcheck ||
+    prev.defaultFontFamily !== next.defaultFontFamily ||
+    prev.defaultFontSize !== next.defaultFontSize
+  ) {
+    const styleArgs = [
+      next.spellcheck,
+      next.defaultFontFamily,
+      next.defaultFontSize,
+    ] as const;
+    chapterStore.applyEditorStyles(...styleArgs);
+    splitChapterStore.applyEditorStyles(...styleArgs);
+  }
   if (!opts?.skipLibrarySync && libraryStore.library) {
     void libraryStore.syncPreferencesToBook(next);
   }
