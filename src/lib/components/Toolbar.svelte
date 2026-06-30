@@ -16,6 +16,10 @@
     resolveFontSize,
   } from "$lib/utils/typography";
   import FontFamilyPicker from "./FontFamilyPicker.svelte";
+  import {
+    isDeletionMarkActive,
+    toggleTrackedDeletionMark,
+  } from "$lib/editor/formatActions";
 
 
   interface Props {
@@ -34,7 +38,7 @@
   let isBold = $state(false);
   let isItalic = $state(false);
   let isUnderline = $state(false);
-  let isStrike = $state(false);
+  let isDeletion = $state(false);
   let lastDefaultFontSize = app.settings.defaultFontSize;
 
   $effect(() => {
@@ -64,7 +68,7 @@
       isBold = false;
       isItalic = false;
       isUnderline = false;
-      isStrike = false;
+      isDeletion = false;
       return;
     }
     const syncToolbar = () => {
@@ -74,7 +78,7 @@
       isBold = editor.isActive("bold");
       isItalic = editor.isActive("italic");
       isUnderline = editor.isActive("underline");
-      isStrike = editor.isActive("strike");
+      isDeletion = isDeletionMarkActive(editor);
       toolbarFontSize = fontSizeMarkAtEditor(editor) ?? typingFontSize;
     };
     const onSelectionUpdate = () => {
@@ -168,10 +172,10 @@
     </button>
     <button
       class="tool-btn"
-      class:active={isStrike}
-      title="Strikethrough"
-      aria-pressed={isStrike}
-      onclick={cmd(() => editor?.chain().focus().toggleStrike().run())}
+      class:active={isDeletion}
+      title="Mark as deleted"
+      aria-pressed={isDeletion}
+      onclick={cmd(() => toggleTrackedDeletionMark(editor))}
     >
       <span class="strike">S</span>
     </button>
@@ -218,9 +222,9 @@
     ><span class="underline">U</span></button>
     <button
       class="tool-btn"
-      class:active={isStrike}
-      title="Strikethrough"
-      onclick={cmd(() => editor?.chain().focus().toggleStrike().run())}
+      class:active={isDeletion}
+      title="Mark as deleted"
+      onclick={cmd(() => toggleTrackedDeletionMark(editor))}
     ><span class="strike">S</span></button>
     <div class="sep"></div>
     <button class="tool-btn" title="Add comment" onclick={cmd(() => app.addCommentOnSelection())}>Comment</button>

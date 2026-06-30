@@ -5,7 +5,7 @@
     redoEditor,
     toggleBold,
     toggleItalic,
-    toggleStrike,
+    toggleTrackedDeletionMark,
     toggleUnderline,
     undoEditor,
   } from "$lib/editor/formatActions";
@@ -98,7 +98,7 @@
   <button type="button" role="menuitem" onclick={() => run(() => toggleBold(editor))}>Bold</button>
   <button type="button" role="menuitem" onclick={() => run(() => toggleItalic(editor))}>Italic</button>
   <button type="button" role="menuitem" onclick={() => run(() => toggleUnderline(editor))}>Underline</button>
-  <button type="button" role="menuitem" onclick={() => run(() => toggleStrike(editor))}>Strikethrough</button>
+  <button type="button" role="menuitem" onclick={() => run(() => toggleTrackedDeletionMark(editor))}>Strikethrough</button>
   <div class="sep" role="separator"></div>
   <button type="button" role="menuitem" onclick={() => run(() => onAddComment?.())}>Add Comment</button>
   <div class="sep" role="separator"></div>

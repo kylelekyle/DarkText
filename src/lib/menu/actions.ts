@@ -12,6 +12,7 @@ import {
   insertToc,
 } from "$lib/editor/insert";
 import { setParagraphAlignment } from "$lib/editor/align";
+import { toggleTrackedDeletionMark } from "$lib/editor/formatActions";
 import { shortcutKeysForMenu } from "$lib/shortcuts/registry";
 import { formatError } from "$lib/utils/errors";
 import type { ChapterSection, MenuAction } from "$lib/types";
@@ -221,7 +222,7 @@ export function buildMenuActions(ctx: ActionContext): MenuAction[] {
     { id: "fmt.bold", label: "Bold", shortcut: menuShortcut("fmt.bold"), group: "Format", run: () => editor?.chain().focus().toggleBold().run() },
     { id: "fmt.italic", label: "Italic", shortcut: menuShortcut("fmt.italic"), group: "Format", run: () => editor?.chain().focus().toggleItalic().run() },
     { id: "fmt.underline", label: "Underline", shortcut: menuShortcut("fmt.underline"), group: "Format", run: () => editor?.chain().focus().toggleUnderline().run() },
-    { id: "fmt.strike", label: "Strikethrough", group: "Format", run: () => editor?.chain().focus().toggleStrike().run() },
+    { id: "fmt.strike", label: "Strikethrough", group: "Format", run: () => toggleTrackedDeletionMark(editor) },
     { id: "fmt.left", label: "Align Left", group: "Format", run: () => editor && setParagraphAlignment(editor, "left") },
     { id: "fmt.center", label: "Align Center", group: "Format", run: () => editor && setParagraphAlignment(editor, "center") },
     { id: "fmt.right", label: "Align Right", group: "Format", run: () => editor && setParagraphAlignment(editor, "right") },

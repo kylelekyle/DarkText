@@ -1,5 +1,6 @@
 import { describe, expect, it, afterEach } from "vitest";
 import type { Editor } from "@tiptap/core";
+import { toggleTrackedDeletionMark } from "$lib/editor/formatActions";
 import { applyChangeInEditor } from "$lib/editor/review";
 import { replaceAllInDocument, replaceOneInDocument } from "$lib/editor/search";
 import { setTrackChangesEnabled } from "$lib/editor/trackChanges";
@@ -289,5 +290,35 @@ describe("TrackChangesPlugin", () => {
     editor.chain().focus("end").insertContent(" two").run();
     expect(editor.getHTML()).toContain("dt-insertion");
     expect(editorPlainText(editor)).toBe("Start one two");
+  });
+
+  it("toolbar strikethrough applies a review deletion mark", () => {
+    const editor = track();
+    expect(selectText(editor, "world")).toBe(true);
+    toggleTrackedDeletionMark(editor);
+    const html = editor.getHTML();
+    expect(html).toContain("dt-deletion");
+    expect(html).not.toContain("<s>");
+    expect(html).toMatch(/dt-deletion[^>]*>world</);
+  });
+
+  it("toolbar strikethrough removes an existing deletion mark", () => {
+    const editor = track();
+    expect(selectText(editor, "world")).toBe(true);
+    toggleTrackedDeletionMark(editor);
+    expect(editor.getHTML()).toContain("dt-deletion");
+    toggleTrackedDeletionMark(editor);
+    expect(editor.getHTML()).not.toContain("dt-deletion");
+    expect(editorPlainText(editor)).toBe("Hello world");
+  });
+
+  it("undoes toolbar deletion mark without duplicating text", () => {
+    const editor = track();
+    expect(selectText(editor, "world")).toBe(true);
+    toggleTrackedDeletionMark(editor);
+    expect(editor.getHTML()).toContain("dt-deletion");
+    editor.chain().focus().undo().run();
+    expect(editor.getHTML()).not.toContain("dt-deletion");
+    expect(editorPlainText(editor)).toBe("Hello world");
   });
 });
