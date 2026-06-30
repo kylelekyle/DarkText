@@ -2,7 +2,7 @@ import type { Editor } from "@tiptap/core";
 import { Extension } from "@tiptap/core";
 import { Fragment, type MarkType, type Node as PMNode, type Slice } from "@tiptap/pm/model";
 import { Plugin, PluginKey, TextSelection, type Transaction } from "@tiptap/pm/state";
-import { ReplaceStep } from "@tiptap/pm/transform";
+import { ReplaceStep, type Step } from "@tiptap/pm/transform";
 import { isHistoryTransaction } from "prosemirror-history";
 
 const TRACK_META = "trackChanges";
@@ -14,6 +14,10 @@ export function setTrackChangesEnabled(editor: Editor | null, enabled: boolean) 
 
 export function isTrackChangesEnabled(editor: Editor): boolean {
   return trackStateByEditor.get(editor) ?? false;
+}
+
+function applyStepDoc(doc: PMNode, step: Step): PMNode {
+  return step.apply(doc).doc ?? doc;
 }
 
 function sliceHasNonDeletionText(slice: Slice, deletion: MarkType): boolean {
@@ -190,7 +194,7 @@ export const TrackChangesPlugin = Extension.create({
 
             for (const step of transaction.steps) {
               if (!(step instanceof ReplaceStep)) {
-                stepDoc = step.apply(stepDoc).doc;
+                stepDoc = applyStepDoc(stepDoc, step);
                 continue;
               }
 
@@ -199,7 +203,7 @@ export const TrackChangesPlugin = Extension.create({
 
               // setContent / load HTML replaces the whole document — marks are already in the slice.
               if (delFrom === 0 && delTo === stepDoc.content.size) {
-                stepDoc = step.apply(stepDoc).doc;
+                stepDoc = applyStepDoc(stepDoc, step);
                 continue;
               }
 
@@ -240,7 +244,7 @@ export const TrackChangesPlugin = Extension.create({
                 }
               }
 
-              stepDoc = step.apply(stepDoc).doc;
+              stepDoc = applyStepDoc(stepDoc, step);
             }
 
             curDoc = transaction.doc;

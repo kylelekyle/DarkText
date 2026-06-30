@@ -220,9 +220,6 @@
 
   .editor-scroller {
     flex: 1;
-    width: 100%;
-    min-width: 0;
-    overflow-x: hidden;
     overflow-y: auto;
     padding: 28px 32px 72px;
     transition: padding var(--transition-focus);
@@ -233,9 +230,8 @@
   }
 
   .editor-page {
-    width: 100%;
     max-width: 720px;
-    margin-inline: auto;
+    margin: 0 auto;
     background: var(--bg-page);
     border: 1px solid var(--border-page);
     border-radius: 2px;

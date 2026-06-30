@@ -257,7 +257,7 @@ export function buildMenuActions(ctx: ActionContext): MenuAction[] {
       group: "Review",
       run: () => {
         if (app.mode !== "editor") app.setMode("editor");
-        else app.openReviewPanel();
+        app.showReviewPanel = true;
       },
     },
     // Book
@@ -299,10 +299,7 @@ export function buildMenuActions(ctx: ActionContext): MenuAction[] {
       id: "view.editor",
       label: "Review Mode",
       group: "View",
-      run: () => {
-        app.setMode("editor");
-        app.openReviewPanel();
-      },
+      run: () => app.setMode("editor"),
     },
     { id: "view.edits", label: "Show edits & comments", group: "View", run: () => app.toggleShowEdits() },
 

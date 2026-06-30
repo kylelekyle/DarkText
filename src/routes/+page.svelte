@@ -8,7 +8,6 @@
   import TitleBar from "$lib/components/TitleBar.svelte";
   import WelcomeScreen from "$lib/components/WelcomeScreen.svelte";
   import AppShell from "$lib/components/AppShell.svelte";
-
   initWindowCloseHandler();
 
   onMount(() => {
@@ -36,6 +35,4 @@
     overflow: hidden;
     background: var(--bg-deep);
   }
-
-
 </style>

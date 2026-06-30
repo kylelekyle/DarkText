@@ -229,14 +229,6 @@
     ><span class="strike">S</span></button>
     <div class="sep"></div>
     <button class="tool-btn" title="Add comment" onclick={cmd(() => app.addCommentOnSelection())}>Comment</button>
-    <button
-      class="tool-btn"
-      class:active={!app.reviewPanelDismissed}
-      title={app.reviewPanelDismissed ? "Show review panel" : "Hide review panel"}
-      onclick={cmd(() => (app.reviewPanelDismissed ? app.openReviewPanel() : app.toggleReviewPanel()))}
-    >
-      Panel
-    </button>
     <div class="sep"></div>
     <button class="tool-btn" title="Undo" onclick={cmd(() => editor?.chain().focus().undo().run())} disabled={!canUndo}>↩</button>
     <button class="tool-btn" title="Redo" onclick={cmd(() => editor?.chain().focus().redo().run())} disabled={!canRedo}>↪</button>
