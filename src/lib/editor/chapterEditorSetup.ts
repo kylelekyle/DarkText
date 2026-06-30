@@ -33,6 +33,7 @@ export function buildChapterExtensions(libraryPath: string | null) {
       codeBlock: false,
       code: false,
       blockquote: false,
+      underline: false,
     }),
     TextStyle,
     FontSize,

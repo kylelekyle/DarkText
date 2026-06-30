@@ -80,7 +80,12 @@ export function replaceOneInDocument(
   const match = findInDocument(editor, q, from, options);
   if (!match) return false;
 
-  editor.chain().focus().insertContentAt(match, replacement).run();
+  editor
+    .chain()
+    .focus()
+    .setTextSelection({ from: match.from, to: match.to })
+    .insertContent(replacement)
+    .run();
   return true;
 }
 
@@ -99,7 +104,12 @@ export function replaceAllInDocument(
 
   for (let i = matches.length - 1; i >= 0; i--) {
     const { from, to } = matches[i];
-    editor.chain().focus().insertContentAt({ from, to }, replacement).run();
+    editor
+      .chain()
+      .focus()
+      .setTextSelection({ from, to })
+      .insertContent(replacement)
+      .run();
   }
   return matches.length;
 }
