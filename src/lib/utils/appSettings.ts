@@ -33,7 +33,7 @@ export const defaultAppSettings: AppSettings = {
   openLastOnLaunch: false,
   installType: null,
   firstRunComplete: false,
-  defaultFontFamily: "Georgia, serif",
+  defaultFontFamily: "Calibri, sans-serif",
   defaultFontSize: DEFAULT_FONT_SIZE,
   spellcheck: true,
   defaultCompilePreset: "manuscript",
