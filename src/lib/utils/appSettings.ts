@@ -1,5 +1,6 @@
 import type { CompilePreset, ExportFormat } from "$lib/types";
 import { DEFAULT_FONT_SIZE, resolveFontSize } from "$lib/utils/typography";
+import { TYPING_SOUND_IDS, type TypingSoundTheme } from "$lib/utils/typingSounds";
 
 const STORAGE_KEY = "darktext-settings";
 
@@ -14,6 +15,7 @@ export interface AppSettings {
   firstRunComplete: boolean;
   defaultFontSize: string;
   spellcheck: boolean;
+  typingSound: TypingSoundTheme;
   defaultCompilePreset: CompilePreset;
   defaultCompileFormat: ExportFormat;
   includeResearchInCompile: boolean;
@@ -34,6 +36,7 @@ export const defaultAppSettings: AppSettings = {
   firstRunComplete: false,
   defaultFontSize: DEFAULT_FONT_SIZE,
   spellcheck: true,
+  typingSound: "typewriter",
   defaultCompilePreset: "manuscript",
   defaultCompileFormat: "docx",
   includeResearchInCompile: false,
@@ -56,6 +59,9 @@ export function normalizeAppSettings(raw: Partial<AppSettings>): AppSettings {
       String(merged.defaultFontSize ?? defaultAppSettings.defaultFontSize),
     ),
     spellcheck: merged.spellcheck !== false,
+    typingSound: TYPING_SOUND_IDS.includes(merged.typingSound)
+      ? merged.typingSound
+      : defaultAppSettings.typingSound,
     defaultCompilePreset: VALID_PRESETS.includes(merged.defaultCompilePreset)
       ? merged.defaultCompilePreset
       : defaultAppSettings.defaultCompilePreset,

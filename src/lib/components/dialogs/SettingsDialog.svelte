@@ -10,6 +10,7 @@
   } from "$lib/utils/appSettings";
   import type { CompilePreset, ExportFormat } from "$lib/types";
   import { FONT_SIZES, fontSizeLabel } from "$lib/utils/typography";
+  import { previewTypingSound, TYPING_SOUND_THEMES } from "$lib/utils/typingSounds";
 
   type Tab = "general" | "editor" | "compile" | "library";
 
@@ -97,6 +98,18 @@
           <input type="checkbox" bind:checked={draft.spellcheck} />
           Spellcheck enabled by default
         </label>
+        <label>
+          <span>Typing sound</span>
+          <select
+            bind:value={draft.typingSound}
+            onchange={() => previewTypingSound(draft.typingSound)}
+          >
+            {#each TYPING_SOUND_THEMES as theme}
+              <option value={theme.id}>{theme.label}</option>
+            {/each}
+          </select>
+        </label>
+        <p class="hint">Plays as you type — pick a style to hear a preview.</p>
       {:else if tab === "compile"}
         <label>
           <span>Default preset</span>

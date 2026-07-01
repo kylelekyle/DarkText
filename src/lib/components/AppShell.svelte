@@ -29,6 +29,7 @@
   import ReviewColorStyles from "./ReviewColorStyles.svelte";
   import ReviewHoverCard from "./ReviewHoverCard.svelte";
   import { handleGlobalShortcut } from "$lib/shortcuts/registry";
+  import { playTypingSound } from "$lib/utils/typingSounds";
   import { portal } from "$lib/utils/portal";
   import { reviewStore } from "$lib/stores/review.svelte";
   import { libraryStore } from "$lib/stores/library.svelte";
@@ -145,6 +146,7 @@
   }
 
   function onKeydown(e: KeyboardEvent) {
+    playTypingSound(app.settings.typingSound, e);
     if (handleGlobalShortcut(e, { editor: app.activeEditorRef })) return;
 
     if (e.key === "Escape") {
