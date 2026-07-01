@@ -229,16 +229,6 @@ export interface MindMapData {
   view: MindMapViewState;
 }
 
-export interface MindMapNode {
-  key: string;
-  id: string;
-  section: ChapterSection;
-  title: string;
-  status: ChapterStatus;
-  x: number;
-  y: number;
-  pinned: boolean;
-}
 
 export interface MenuAction {
   id: string;

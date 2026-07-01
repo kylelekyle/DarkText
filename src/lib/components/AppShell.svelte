@@ -18,7 +18,7 @@
   import ExportChapterDialog from "./dialogs/ExportChapterDialog.svelte";
   import RenameChapterDialog from "./dialogs/RenameChapterDialog.svelte";
   import AddCommentDialog from "./dialogs/AddCommentDialog.svelte";
-  import MindMapPanel from "./MindMapPanel.svelte";
+  import GraphPanel from "./GraphPanel.svelte";
   import ReadThroughPanel from "./ReadThroughPanel.svelte";
 
   import LibraryReviewDialog from "./dialogs/LibraryReviewDialog.svelte";
@@ -346,7 +346,7 @@
 <QuickActions editor={app.activeEditorRef} />
 
 {#if app.showMindMap}
-  <MindMapPanel />
+  <GraphPanel />
 {/if}
 
 {#if app.showReadThrough}
