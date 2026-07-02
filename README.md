@@ -55,10 +55,10 @@ Honest list. No dates. Shipped when it is good enough to use.
 
 | Planned                     | Notes                                                                        |
 | --------------------------- | ---------------------------------------------------------------------------- |
-| **Split view**              | Two chapters side by side (Scrivener-style), both editable. Target for v0.2. |
 | **Stronger DOCX export**    | Tables, fonts, fewer surprises                                               |
 | **Writing workflow polish** | Search, compile, review on big manuscripts                                   |
 | **Bug fixes from real use** | The stuff you only find when you live in the app                             |
+| **Custom CSS themes**       | Make your DarkText yours.                                                    | 
 
 Not planned: subscriptions, accounts, cloud sync, AI features, telemetry.
 
