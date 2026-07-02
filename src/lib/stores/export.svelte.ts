@@ -1,11 +1,5 @@
 import * as api from "$lib/api";
 import {
-  isDocxExport,
-  isEpubExport,
-  isRustExport,
-  normalizeRustExportFormat,
-} from "$lib/export/router";
-import {
   chapterMetaForExport,
   chapterMetasForExport,
 } from "$lib/export/resolveExportMeta";
@@ -17,6 +11,28 @@ import type {
   ExportFormat,
   ExportResult,
 } from "$lib/types";
+
+/** Formats handled by Rust `export_cmds` (html, markdown, text). */
+const RUST_EXPORT_FORMATS = ["html", "markdown", "text"] as const satisfies readonly ExportFormat[];
+
+type RustExportFormat = (typeof RUST_EXPORT_FORMATS)[number];
+
+function isDocxExport(format: ExportFormat): boolean {
+  return format === "docx";
+}
+
+function isEpubExport(format: ExportFormat): boolean {
+  return format === "epub";
+}
+
+function isRustExport(format: ExportFormat): format is RustExportFormat {
+  return (RUST_EXPORT_FORMATS as readonly string[]).includes(format);
+}
+
+/** Pass-through for Rust IPC (ExportFormat already uses canonical names). */
+function normalizeRustExportFormat(format: ExportFormat): ExportFormat {
+  return format;
+}
 
 export class ExportStore {
   compileFormat = $state<ExportFormat | null>(null);

@@ -30,7 +30,7 @@
   import ReviewHoverCard from "./ReviewHoverCard.svelte";
   import { handleGlobalShortcut } from "$lib/shortcuts/registry";
   import { playTypingSound } from "$lib/utils/typingSounds";
-  import { portal } from "$lib/utils/portal";
+  import { portal } from "$lib/utils/platform";
   import { reviewStore } from "$lib/stores/review.svelte";
   import { libraryStore } from "$lib/stores/library.svelte";
   import type { ChapterSection } from "$lib/types";

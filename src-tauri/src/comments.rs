@@ -1,4 +1,4 @@
-use crate::library::{chapter_exists, library_paths, read_json_or_default, write_json};
+use crate::library::{chapter_exists, read_json_or_default, write_json};
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::Path;
@@ -42,13 +42,7 @@ pub struct ChapterComments {
 }
 
 fn comments_path(library_path: &Path, section: &str, chapter_id: &str) -> std::path::PathBuf {
-    library_paths(library_path)
-        .map(|p| p.comments_json(section, chapter_id))
-        .unwrap_or_else(|_| {
-            library_path
-                .join(section)
-                .join(format!("{chapter_id}.comments.json"))
-        })
+    crate::paths::LibraryPaths::detect_or_legacy(library_path).comments_json(section, chapter_id)
 }
 
 pub fn read_chapter_comments(

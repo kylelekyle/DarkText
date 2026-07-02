@@ -1,5 +1,5 @@
 import { describe, expect, it, beforeEach } from "vitest";
-import { nextChapterIdAfterDelete } from "./chapterDeleteNav";
+import { nextChapterIdAfterDelete } from "./chapterDelete";
 import { libraryStore } from "./library.svelte";
 import type { ChapterMeta } from "$lib/types";
 

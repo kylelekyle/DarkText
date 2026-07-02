@@ -6,7 +6,7 @@ import {
   syncChangesFromEditor,
   syncChangesFromHtml,
 } from "$lib/editor/review";
-import { trackedChangesDiffer } from "$lib/editor/reviewChanges";
+import { trackedChangesDiffer } from "$lib/editor/trackChanges";
 import {
   orderedReviewItems,
   scrollToChange,

@@ -417,9 +417,7 @@ pub fn duplicate_chapter(
 const IMAGE_EXTENSIONS: &[&str] = &["png", "jpg", "jpeg", "gif", "webp", "bmp"];
 
 fn images_dir(library_path: &Path) -> PathBuf {
-    library_paths(library_path)
-        .map(|p| p.images_dir())
-        .unwrap_or_else(|_| library_path.join("images"))
+    crate::paths::LibraryPaths::detect_or_legacy(library_path).images_dir()
 }
 
 #[tauri::command]

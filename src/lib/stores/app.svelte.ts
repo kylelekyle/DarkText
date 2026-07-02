@@ -4,14 +4,7 @@ import { exportStore } from "$lib/stores/export.svelte";
 import { libraryStore } from "$lib/stores/library.svelte";
 import { reviewStore } from "$lib/stores/review.svelte";
 
-import { applyAppSettings } from "$lib/stores/applyAppSettings";
-import { bindAppStores } from "$lib/stores/bindAppStores";
 import { deleteChapterWorkspace } from "$lib/stores/chapterDelete";
-import {
-  setChapterStatus as applyChapterStatus,
-  setChaptersStatus as applyChaptersStatus,
-  updateChapterTitle as applyChapterTitle,
-} from "$lib/stores/chapterMetadata";
 import { ChapterOpenQueue } from "$lib/stores/chapterQueue";
 import {
   guardUnsavedChanges,
@@ -28,8 +21,15 @@ import {
   newCharacterWorkspace,
   requestChapterDeleteWorkspace,
   requestChaptersDeleteWorkspace,
+  setChapterStatus as applyChapterStatus,
+  setChaptersStatus as applyChaptersStatus,
+  updateChapterTitle as applyChapterTitle,
 } from "$lib/stores/chapterOps";
-import { getAppSettings, type AppSettings } from "$lib/utils/appSettings";
+import {
+  getAppSettings,
+  saveAppSettings,
+  type AppSettings,
+} from "$lib/utils/appSettings";
 import {
   applyPendingSearchJump,
   createLibraryWorkspace,
@@ -113,7 +113,28 @@ class AppStore {
   private sidebarBeforeFocus = false;
 
   constructor() {
-    bindAppStores(this);
+    this.bindStores();
+  }
+
+  /** Wire domain stores to the app shell (toast, editor, review). */
+  private bindStores() {
+    libraryStore.bindToast((msg) => this.showToast(msg));
+    chapterStore.bindToast((msg) => this.showToast(msg));
+    chapterStore.bindSettings(() => this.settings);
+    chapterStore.bindEditor(() => this.editorRef);
+    chapterStore.bindOnHtmlChange((html) => reviewStore.onHtmlUpdated(html));
+    splitChapterStore.bindToast((msg) => this.showToast(msg));
+    splitChapterStore.bindSettings(() => this.settings);
+    splitChapterStore.bindEditor(() => this.splitEditorRef);
+    reviewStore.bindToast((msg) => this.showToast(msg));
+    reviewStore.bindEditor(() => this.editorRef);
+    reviewStore.bindReviewNames(() => ({
+      author: this.settings.authorDisplayName,
+      reviewer: this.settings.reviewerDisplayName,
+    }));
+    reviewStore.bindOnReviewChange(() =>
+      this.scheduleLibraryReviewTotalsRefresh(),
+    );
   }
 
   // --- Library (delegated) ---
@@ -688,7 +709,22 @@ class AppStore {
     next: AppSettings,
     opts?: { skipLibrarySync?: boolean },
   ) {
-    applyAppSettings(this, next, opts);
+    const prev = this.settings;
+    this.settings = next;
+    saveAppSettings(next);
+    this.sidebarWidth = next.sidebarWidth;
+    this.splitRatio = next.splitRatio;
+    this.spellcheck = next.spellcheck;
+    if (
+      prev.spellcheck !== next.spellcheck ||
+      prev.defaultFontSize !== next.defaultFontSize
+    ) {
+      chapterStore.applyEditorStyles(next.spellcheck, next.defaultFontSize);
+      splitChapterStore.applyEditorStyles(next.spellcheck, next.defaultFontSize);
+    }
+    if (!opts?.skipLibrarySync && libraryStore.library) {
+      void libraryStore.syncPreferencesToBook(next);
+    }
   }
 
   async confirm(

@@ -133,9 +133,7 @@ pub fn library_paths(library_path: &Path) -> Result<LibraryPaths, String> {
 }
 
 pub fn section_dir(library_path: &Path, section: &str) -> PathBuf {
-    library_paths(library_path)
-        .map(|p| p.content_dir(section))
-        .unwrap_or_else(|_| library_path.join(section))
+    LibraryPaths::detect_or_legacy(library_path).content_dir(section)
 }
 
 pub fn meta_path(dir: &Path, id: &str) -> PathBuf {

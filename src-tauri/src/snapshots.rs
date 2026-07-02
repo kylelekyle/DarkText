@@ -11,14 +11,7 @@ use std::path::{Path, PathBuf};
 const MAX_SNAPSHOTS_PER_CHAPTER: usize = 30;
 
 fn snapshot_root(library_path: &Path, section: &str, chapter_id: &str) -> PathBuf {
-    library_paths(library_path)
-        .map(|p| p.snapshot_dir(section, chapter_id))
-        .unwrap_or_else(|_| {
-            library_path
-                .join("snapshots")
-                .join(section)
-                .join(chapter_id)
-        })
+    crate::paths::LibraryPaths::detect_or_legacy(library_path).snapshot_dir(section, chapter_id)
 }
 
 pub fn save_chapter_snapshot(

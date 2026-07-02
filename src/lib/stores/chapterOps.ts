@@ -1,10 +1,17 @@
-import { libraryStore } from "$lib/stores/library.svelte";
+import * as api from "$lib/api";
+import { libraryStore, type LibraryStore } from "$lib/stores/library.svelte";
 import { reviewStore } from "$lib/stores/review.svelte";
 import { chapterStore } from "$lib/stores/chapter.svelte";
 import type { ChapterDeleteHost } from "$lib/stores/chapterDelete";
+import { getChapterTitle } from "$lib/utils/chapterTitle";
 import { formatError } from "$lib/utils/errors";
 import { getSectionList } from "$lib/utils/sectionOps";
-import type { ChapterContent, ChapterMeta, ChapterSection } from "$lib/types";
+import type {
+  ChapterContent,
+  ChapterMeta,
+  ChapterSection,
+  ChapterStatus,
+} from "$lib/types";
 import { sidebarSelection } from "$lib/stores/sidebarSelection.svelte";
 import { showConfirm, type ConfirmFlowSlice } from "./confirmFlow";
 
@@ -226,5 +233,116 @@ export async function duplicateChaptersWorkspace(
   } catch (e) {
     host.showToast(formatError(e));
   }
+}
+
+// --- Chapter metadata (status / title) ---
+// Optimistic update in the stores, then persist; roll back on failure.
+
+function persistChapterStatus(
+  store: LibraryStore,
+  chapterId: string,
+  status: ChapterStatus,
+  prevStatus: ChapterStatus | null,
+  section: ChapterSection,
+  getActive: () => ChapterMeta | null,
+  setActive: (meta: ChapterMeta | null) => void,
+): void {
+  if (!store.library) return;
+  void api
+    .updateChapterStatus(store.library.path, chapterId, status, section)
+    .then((updated) => {
+      setActive(store.syncChapterInLists(updated, getActive()));
+    })
+    .catch((e) => {
+      if (prevStatus) {
+        setActive(store.setChapterStatus(chapterId, prevStatus, section, getActive()));
+      }
+      store.error = formatError(e);
+      store.showToast(formatError(e));
+    });
+}
+
+function persistChapterTitle(
+  store: LibraryStore,
+  chapterId: string,
+  title: string,
+  prevTitle: string | null,
+  section: ChapterSection,
+  getActive: () => ChapterMeta | null,
+  setActive: (meta: ChapterMeta | null) => void,
+): void {
+  if (!store.library) return;
+  void api
+    .updateChapterTitle(store.library.path, chapterId, title, section)
+    .then((updated) => {
+      setActive(store.syncChapterInLists(updated, getActive()));
+    })
+    .catch((e) => {
+      if (prevTitle) {
+        setActive(store.updateChapterTitle(chapterId, prevTitle, section, getActive()));
+      }
+      store.error = formatError(e);
+      store.showToast(formatError(e));
+    });
+}
+
+export function setChaptersStatus(
+  chapterIds: string[],
+  status: ChapterStatus,
+  section: ChapterSection = "chapters",
+): void {
+  for (const chapterId of chapterIds) {
+    setChapterStatus(chapterId, status, section);
+  }
+}
+
+export function setChapterStatus(
+  chapterId: string,
+  status: ChapterStatus,
+  section: ChapterSection = "chapters",
+): void {
+  const prevStatus = libraryStore.getChapterStatus(chapterId, section);
+  chapterStore.activeChapterMeta = libraryStore.setChapterStatus(
+    chapterId,
+    status,
+    section,
+    chapterStore.activeChapterMeta,
+  );
+  persistChapterStatus(
+    libraryStore,
+    chapterId,
+    status,
+    prevStatus,
+    section,
+    () => chapterStore.activeChapterMeta,
+    (meta) => {
+      chapterStore.activeChapterMeta = meta;
+    },
+  );
+}
+
+export function updateChapterTitle(
+  chapterId: string,
+  title: string,
+  section: ChapterSection = "chapters",
+): void {
+  const prevTitle = getChapterTitle(chapterId, section);
+  chapterStore.activeChapterMeta = libraryStore.updateChapterTitle(
+    chapterId,
+    title,
+    section,
+    chapterStore.activeChapterMeta,
+  );
+  persistChapterTitle(
+    libraryStore,
+    chapterId,
+    title,
+    prevTitle,
+    section,
+    () => chapterStore.activeChapterMeta,
+    (meta) => {
+      chapterStore.activeChapterMeta = meta;
+    },
+  );
 }
 

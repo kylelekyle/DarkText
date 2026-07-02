@@ -25,9 +25,7 @@ pub struct LibraryFont {
 }
 
 pub fn fonts_dir(library_path: &Path) -> PathBuf {
-    crate::library::library_paths(library_path)
-        .map(|p| p.fonts_dir())
-        .unwrap_or_else(|_| library_path.join("fonts"))
+    crate::paths::LibraryPaths::detect_or_legacy(library_path).fonts_dir()
 }
 
 fn scan_system_fonts() -> Vec<String> {

@@ -73,6 +73,16 @@ impl LibraryPaths {
         }
     }
 
+    /// Detect the on-disk layout; when detection fails (manifest missing,
+    /// e.g. mid-creation), assume the legacy layout so path lookups still
+    /// resolve to sensible locations under `root`.
+    pub fn detect_or_legacy(root: &Path) -> Self {
+        Self::detect(root).unwrap_or_else(|_| Self {
+            root: root.to_path_buf(),
+            layout: LayoutVersion::Legacy,
+        })
+    }
+
     pub fn layout(&self) -> LayoutVersion {
         self.layout
     }

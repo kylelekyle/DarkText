@@ -1,4 +1,4 @@
-use crate::library::library_paths;
+use crate::paths::LibraryPaths;
 use crate::{atomic_write, load_section_chapters, read_manifest, ChapterMeta, CHAPTERS};
 const RESEARCH: &str = "research";
 const CHARACTERS: &str = "characters";
@@ -88,15 +88,11 @@ impl Default for BookSettings {
 }
 
 pub fn book_settings_path(library_path: &Path) -> PathBuf {
-    library_paths(library_path)
-        .map(|p| p.book_settings())
-        .unwrap_or_else(|_| library_path.join("book.json"))
+    LibraryPaths::detect_or_legacy(library_path).book_settings()
 }
 
 pub fn exports_dir(library_path: &Path) -> PathBuf {
-    library_paths(library_path)
-        .map(|p| p.exports_dir())
-        .unwrap_or_else(|_| library_path.join("exports"))
+    LibraryPaths::detect_or_legacy(library_path).exports_dir()
 }
 
 pub fn read_book_settings(library_path: &Path) -> Result<BookSettings, String> {
@@ -133,9 +129,7 @@ pub fn read_section_html(
     chapter_id: &str,
     section: &str,
 ) -> Result<String, String> {
-    let path = library_paths(library_path)
-        .map(|p| p.chapter_html(section, chapter_id))
-        .unwrap_or_else(|_| library_path.join(section).join(format!("{chapter_id}.html")));
+    let path = LibraryPaths::detect_or_legacy(library_path).chapter_html(section, chapter_id);
     fs::read_to_string(&path).map_err(|e| e.to_string())
 }
 

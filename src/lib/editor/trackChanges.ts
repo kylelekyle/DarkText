@@ -4,6 +4,7 @@ import { Fragment, type MarkType, type Node as PMNode, type Slice } from "@tipta
 import { Plugin, PluginKey, TextSelection, type Transaction } from "@tiptap/pm/state";
 import { ReplaceStep } from "@tiptap/pm/transform";
 import { isHistoryTransaction } from "prosemirror-history";
+import type { TrackedChange } from "$lib/types";
 
 const TRACK_META = "trackChanges";
 const trackStateByEditor = new WeakMap<Editor, boolean>();
@@ -283,3 +284,24 @@ export const TrackChangesPlugin = Extension.create({
     ];
   },
 });
+/** True when live tracked-change metadata differs from the previous sidecar snapshot. */
+export function trackedChangesDiffer(
+  prev: TrackedChange[],
+  next: TrackedChange[],
+): boolean {
+  if (prev.length !== next.length) return true;
+  for (let i = 0; i < next.length; i++) {
+    const a = prev[i];
+    const b = next[i];
+    if (
+      a.markId !== b.markId ||
+      a.type !== b.type ||
+      a.text !== b.text ||
+      a.status !== b.status ||
+      a.author !== b.author
+    ) {
+      return true;
+    }
+  }
+  return false;
+}
