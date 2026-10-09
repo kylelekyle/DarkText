@@ -13,3 +13,8 @@ test-chapter-export.docx
 src-tauri/target/
 *.docx
 Thumbs.db
+# Blender pipeline outputs
+blender-pipeline/out/
+blender-pipeline/.venv/
+__pycache__/
+.pytest_cache/
